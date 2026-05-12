@@ -16,13 +16,11 @@ if [ "$os" = "Darwin" ]; then
 elif [ "$os" = "Linux" ]; then
     echo "Installing 7zz on Linux..."
     sudo apt-get update
-    sudo apt-get install -y 7zip p7zip-full
-    # Create symlink to 7zz if it's not in PATH
-    # p7zip-full installs 7zz at /usr/lib/p7zip/7zz
+    sudo apt-get install -y p7zip-full
+    # Create a symlink from 7z (which p7zip-full always provides) to 7zz
+    # so the rest of the codebase can use a consistent name
     if ! command -v 7zz >/dev/null 2>&1; then
-        if [ -f /usr/lib/p7zip/7zz ]; then
-            sudo ln -sf /usr/lib/p7zip/7zz /usr/local/bin/7zz
-        fi
+        sudo ln -sf /usr/bin/7z /usr/local/bin/7zz
     fi
 else
     echo "ERROR: unsupported OS '$os'" >&2
