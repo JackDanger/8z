@@ -15,6 +15,7 @@ SIBLINGS=(
   pippyzippy
   jumpzippy
   jumpzippier
+  deltazippy
   lockzippy
 )
 

@@ -41,6 +41,7 @@ flate2      = { version = "1",                              optional = true }
 # No good Rust encoder exists; Phase 1 ships decode only.
 deflate64   = { version = "0.1",                            optional = true }
 jumpzippier = { version = "0.0.1", path = "../jumpzippier", optional = true }
+deltazippy  = { version = "0.0.1", path = "../deltazippy",  optional = true }
 lockzippy   = { version = "0.0.2", path = "../lockzippy",   optional = true }
 
 [dev-dependencies]
@@ -53,7 +54,7 @@ lzma      = ["dep:lazippy"]
 deflate   = ["dep:flate2"]
 deflate64 = ["dep:deflate64"]  # in-tree; decode-only (no Rust encoder exists for Phase 1)
 bzip2     = ["dep:bzippy2"]
-delta     = []  # in-tree implementation; no sub-crate dependency
+delta     = ["dep:deltazippy"]  # Delta filter via deltazippy sub-crate
 ppmd      = ["dep:pippyzippy"]
 bcj       = ["dep:jumpzippy"]   # BCJ filters via jumpzippy sub-crate
 lzma2     = ["dep:lazippier"]

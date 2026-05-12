@@ -1,4 +1,4 @@
-//! Delta filter coder — in-tree implementation (no sibling crate needed).
+//! Delta filter coder — via `deltazippy` sub-crate.
 //!
 //! 7z's Delta filter (method ID `[0x03]`) is a simple byte-differencing
 //! pre-conditioner. It improves compression of data with regularly-spaced
@@ -10,31 +10,21 @@
 //! A distance of 1 is the most common: each byte is replaced by its difference
 //! from the preceding byte.
 //!
-//! # Encoding
+//! # Backend
 //!
-//! For each position `i`, with a circular buffer of length `distance`:
-//! ```text
-//! out[i] = (in[i] - buf[i % distance]) & 0xFF
-//! buf[i % distance] = in[i]
-//! ```
-//!
-//! # Decoding
-//!
-//! ```text
-//! out[i] = (packed[i] + buf[i % distance]) & 0xFF
-//! buf[i % distance] = out[i]
-//! ```
-//!
-//! Both operations wrap modulo 256.
+//! Delegates to `deltazippy::encode` / `deltazippy::decode`.
+//! The implementation is a trivial pure-Rust native impl (no wrapper needed).
 
 use crate::container::MethodId;
-use crate::error::SevenZippyResult;
+use crate::error::{SevenZippyError, SevenZippyResult};
 use crate::pipeline::Coder;
 
-/// Maximum supported distance value (matches 7z's own limit: 256 channels).
+/// Maximum byte-distance for the 7z Delta filter, per the 7z specification.
+/// Properties are stored as `distance - 1` in one byte (0x00–0xFF), so the
+/// maximum representable distance is 256.
 const MAX_DISTANCE: usize = 256;
 
-/// Delta filter coder backed by an in-tree pure-Rust implementation.
+/// Delta filter coder backed by `deltazippy` sub-crate.
 pub struct DeltaCoder {
     /// Byte difference distance: 1 = subtract/add adjacent bytes.
     /// Stored as-is; `properties()` returns `(distance - 1)` as one byte.
@@ -44,7 +34,7 @@ pub struct DeltaCoder {
 impl DeltaCoder {
     /// Create a Delta coder with the given byte distance.
     ///
-    /// `distance` must be in `1..=256`. Values outside this range are clamped.
+    /// `distance` must be in `1..=MAX_DISTANCE`. Values outside this range are clamped.
     pub fn new(distance: usize) -> Self {
         let distance = distance.clamp(1, MAX_DISTANCE);
         Self { distance }
@@ -52,47 +42,28 @@ impl DeltaCoder {
 
     /// Create a Delta coder from the 1-byte properties blob stored in an archive.
     ///
-    /// The property byte is `distance - 1`, so 0x00 → distance 1 (byte delta).
+    /// The 7z spec defines Delta filter properties as exactly 1 byte:
+    /// `distance - 1`, so 0x00 → distance 1 (byte delta), 0xFF → distance 256.
+    /// Returns [`SevenZippyError::InvalidHeader`] if the blob is not exactly 1 byte.
     pub fn from_props(props: &[u8]) -> SevenZippyResult<Self> {
-        let byte = props.first().copied().unwrap_or(0);
-        let distance = byte as usize + 1;
+        if props.len() != 1 {
+            return Err(SevenZippyError::invalid_header(format!(
+                "Delta filter properties must be exactly 1 byte, got {}",
+                props.len()
+            )));
+        }
+        let distance = props[0] as usize + 1;
         Ok(Self { distance })
-    }
-
-    /// Apply the Delta encoding transformation.
-    fn apply_encode(&self, input: &[u8]) -> Vec<u8> {
-        let mut buf = vec![0u8; self.distance];
-        let mut out = Vec::with_capacity(input.len());
-        for (i, &b) in input.iter().enumerate() {
-            let channel = i % self.distance;
-            let delta = b.wrapping_sub(buf[channel]);
-            out.push(delta);
-            buf[channel] = b;
-        }
-        out
-    }
-
-    /// Apply the Delta decoding transformation.
-    fn apply_decode(&self, packed: &[u8]) -> Vec<u8> {
-        let mut buf = vec![0u8; self.distance];
-        let mut out = Vec::with_capacity(packed.len());
-        for (i, &b) in packed.iter().enumerate() {
-            let channel = i % self.distance;
-            let restored = b.wrapping_add(buf[channel]);
-            out.push(restored);
-            buf[channel] = restored;
-        }
-        out
     }
 }
 
 impl Coder for DeltaCoder {
     fn decode(&self, packed: &[u8], _unpacked_size: u64) -> SevenZippyResult<Vec<u8>> {
-        Ok(self.apply_decode(packed))
+        Ok(deltazippy::decode(packed, self.distance))
     }
 
     fn encode(&self, unpacked: &[u8]) -> SevenZippyResult<Vec<u8>> {
-        Ok(self.apply_encode(unpacked))
+        Ok(deltazippy::encode(unpacked, self.distance))
     }
 
     fn method_id(&self) -> MethodId {
@@ -177,6 +148,30 @@ mod tests {
         let coder = DeltaCoder::from_props(&[0x02]).unwrap();
         assert_eq!(coder.distance, 3);
         assert_eq!(coder.properties(), vec![0x02]);
+    }
+
+    #[test]
+    fn from_props_rejects_empty_blob() {
+        let err = DeltaCoder::from_props(&[]).unwrap_err();
+        assert!(
+            err.to_string().contains("1 byte"),
+            "expected '1 byte' in error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn from_props_rejects_multi_byte_blob() {
+        let err = DeltaCoder::from_props(&[0x01, 0x02]).unwrap_err();
+        assert!(
+            err.to_string().contains("2"),
+            "expected actual length in error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn new_clamps_to_max_distance() {
+        let coder = DeltaCoder::new(1000);
+        assert_eq!(coder.distance, MAX_DISTANCE);
     }
 
     #[test]
