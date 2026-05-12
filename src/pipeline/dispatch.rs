@@ -146,8 +146,19 @@ pub fn coder_for(coder_meta: &CoderMeta) -> SevenZippyResult<Box<dyn Coder>> {
         // BCJ fallback when feature is disabled, or unknown BCJ variant
         [0x03, 0x03, ..] => Err(SevenZippyError::missing_coder("BCJ family")),
 
-        // ── codec stubs — feature-gated ─────────────────────────────────────
-        [0x21] => Err(SevenZippyError::missing_coder("LZMA2")),
+        // ── LZMA2 — feature-gated ───────────────────────────────────────────
+        [0x21] => {
+            #[cfg(feature = "lzma2")]
+            {
+                use crate::pipeline::lzma2::Lzma2Coder;
+                Lzma2Coder::with_props(coder_meta.properties.clone())
+                    .map(|c| Box::new(c) as Box<dyn Coder>)
+            }
+            #[cfg(not(feature = "lzma2"))]
+            {
+                Err(SevenZippyError::missing_coder("LZMA2"))
+            }
+        }
         [0x06, 0xF1, 0x07, 0x01] => Err(SevenZippyError::missing_coder("AES+SHA-256")),
 
         _ => Err(SevenZippyError::unsupported_method(
@@ -182,8 +193,9 @@ mod tests {
         assert_eq!(decoded, data);
     }
 
+    #[cfg(not(feature = "lzma2"))]
     #[test]
-    fn lzma2_is_missing() {
+    fn lzma2_is_missing_without_feature() {
         let result = coder_for_method(&MethodId::lzma2());
         assert!(matches!(result, Err(SevenZippyError::MissingCoder { .. })));
     }

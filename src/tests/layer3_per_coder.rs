@@ -115,13 +115,42 @@ fn pippyzippy_lib_tests_pass() {
     );
 }
 
-// ── Ignored stubs: sibling crates not yet created ────────────────────────────
-
+/// Verify that `lazippier`'s own lib tests pass from 7zippy's perspective.
 #[test]
-#[ignore = "lazippier repo not yet created; un-ignore when JackDanger/lazippier lands"]
 fn lazippier_lib_tests_pass() {
-    // Identical pattern to lazippy_lib_tests_pass.
-    todo!("add lazippier smoke test once the repo exists")
+    let cargo = match find_cargo() {
+        Some(c) => c,
+        None => {
+            eprintln!("[skip] cargo not found — per-coder smoke test skipped");
+            return;
+        }
+    };
+
+    let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let lazippier_path = workspace_root.join("../lazippier");
+    if !lazippier_path.exists() {
+        eprintln!(
+            "[skip] lazippier not found at {} — per-coder smoke test skipped",
+            lazippier_path.display()
+        );
+        return;
+    }
+
+    let output = Command::new(&cargo)
+        .arg("test")
+        .arg("--lib")
+        .arg("--no-default-features")
+        .arg("--manifest-path")
+        .arg(lazippier_path.join("Cargo.toml"))
+        .output()
+        .expect("failed to spawn cargo test for lazippier");
+
+    assert!(
+        output.status.success(),
+        "lazippier lib tests failed:\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
 }
 
 #[test]

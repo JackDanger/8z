@@ -132,10 +132,21 @@ fn round_trip_lzma_zeros_compresses_well() {
 
 // ── Other codecs (ignored until respective crates are wired) ─────────────────
 
+/// Round-trip 64 KiB of seeded random bytes through the LZMA2 pipeline.
+#[cfg(feature = "lzma2")]
 #[test]
-#[ignore = "LZMA2 not yet implemented; un-ignore when lazippier is wired in dispatch.rs"]
 fn round_trip_lzma2_64k() {
-    todo!()
+    use crate::pipeline::lzma2::Lzma2Coder;
+    let input = fixtures::random(0x1A2B_3C4D, 65_536);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("payload.bin", input.clone(), Box::new(Lzma2Coder::new()));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    assert_eq!(archive.file_count(), 1);
+
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
 }
 
 /// Round-trip 64 KiB of seeded random bytes through the BZip2 pipeline.

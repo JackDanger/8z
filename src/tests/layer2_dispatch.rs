@@ -77,9 +77,31 @@ fn assert_unsupported(method: &MethodId, label: &str) {
     }
 }
 
+/// LZMA2 dispatches to Lzma2Coder when the `lzma2` feature is enabled,
+/// or returns MissingCoder when disabled.
 #[test]
-fn lzma2_is_missing() {
-    assert_missing_coder(&MethodId::lzma2(), "LZMA2");
+fn lzma2_dispatches_or_is_missing() {
+    use crate::container::Coder as CoderMeta;
+    // Supply a valid 1-byte LZMA2 props (props_byte=12, dict_size=256 KiB).
+    let meta = CoderMeta {
+        method_id: MethodId::lzma2(),
+        num_in_streams: 1,
+        num_out_streams: 1,
+        properties: vec![12],
+    };
+    let result = crate::pipeline::coder_for(&meta);
+    #[cfg(feature = "lzma2")]
+    {
+        let coder = result.expect("LZMA2 coder must be available when lzma2 feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::lzma2());
+    }
+    #[cfg(not(feature = "lzma2"))]
+    {
+        assert!(
+            matches!(result, Err(SevenZippyError::MissingCoder { .. })),
+            "expected MissingCoder when lzma2 feature is disabled, got {result:?}"
+        );
+    }
 }
 
 /// BZip2 dispatches to Bzip2Coder when the `bzip2` feature is enabled,

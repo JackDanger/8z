@@ -34,7 +34,7 @@ pub enum CoderSpec {
         dict_size: Option<u32>,
     },
     /// LZMA2 at the given compression level. `-m0=lzma2`
-    Lzma2 { level: u32 },
+    Lzma2 { level: u32, dict_size: Option<u32> },
     /// BZip2. `-m0=bzip2`
     Bzip2 { level: u32 },
     /// Deflate. `-m0=deflate`
@@ -59,7 +59,10 @@ impl CoderSpec {
                 dict_size: Some(d),
             } => format!("lzma:d={d}"),
             CoderSpec::Lzma { .. } => "lzma".to_string(),
-            CoderSpec::Lzma2 { level: _ } => "lzma2".to_string(),
+            CoderSpec::Lzma2 {
+                dict_size: Some(d), ..
+            } => format!("lzma2:d={d}"),
+            CoderSpec::Lzma2 { .. } => "lzma2".to_string(),
             CoderSpec::Bzip2 { level: _ } => "bzip2".to_string(),
             CoderSpec::Deflate { level: _ } => "deflate".to_string(),
             CoderSpec::Deflate64 => "deflate64".to_string(),
@@ -78,7 +81,7 @@ impl CoderSpec {
         match self {
             CoderSpec::Copy => 0,
             CoderSpec::Lzma { level, .. } => *level,
-            CoderSpec::Lzma2 { level } => *level,
+            CoderSpec::Lzma2 { level, .. } => *level,
             CoderSpec::Bzip2 { level } => *level,
             CoderSpec::Deflate { level } => *level,
             CoderSpec::Deflate64 => 5,

@@ -10,6 +10,7 @@ set -euo pipefail
 
 SIBLINGS=(
   lazippy
+  lazippier
   bzippy2
   pippyzippy
 )

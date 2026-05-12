@@ -19,6 +19,8 @@ pub mod delta;
 mod dispatch;
 #[cfg(feature = "lzma")]
 pub mod lzma;
+#[cfg(feature = "lzma2")]
+pub mod lzma2;
 #[cfg(feature = "ppmd")]
 pub mod ppmd;
 
