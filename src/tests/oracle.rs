@@ -43,6 +43,8 @@ pub enum CoderSpec {
     Ppmd { level: u32, order: Option<u32> },
     /// Delta filter. `-m0=delta`
     Delta { distance: u32 },
+    /// Deflate64. `-m0=deflate64`
+    Deflate64,
     /// BCJ x86 filter. `-m0=bcj`
     Bcj,
 }
@@ -60,6 +62,7 @@ impl CoderSpec {
             CoderSpec::Lzma2 { level: _ } => "lzma2".to_string(),
             CoderSpec::Bzip2 { level: _ } => "bzip2".to_string(),
             CoderSpec::Deflate { level: _ } => "deflate".to_string(),
+            CoderSpec::Deflate64 => "deflate64".to_string(),
             CoderSpec::Ppmd {
                 level: _,
                 order: Some(o),
@@ -78,6 +81,7 @@ impl CoderSpec {
             CoderSpec::Lzma2 { level } => *level,
             CoderSpec::Bzip2 { level } => *level,
             CoderSpec::Deflate { level } => *level,
+            CoderSpec::Deflate64 => 5,
             CoderSpec::Ppmd { level, .. } => *level,
             CoderSpec::Delta { .. } => 0,
             CoderSpec::Bcj => 0,

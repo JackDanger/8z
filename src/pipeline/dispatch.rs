@@ -52,9 +52,19 @@ pub fn coder_for(coder_meta: &CoderMeta) -> SevenZippyResult<Box<dyn Coder>> {
             }
         }
 
-        // ── Deflate64: same raw deflate but with 64 KiB window; flate2 does not
-        //    support this variant — leave as MissingCoder until gzippy ships it.
-        [0x04, 0x01, 0x09] => Err(SevenZippyError::missing_coder("Deflate64")),
+        // ── Deflate64 — feature-gated (decode-only) ─────────────────────────────
+        //    64 KiB sliding-window variant; no good Rust encoder exists.
+        [0x04, 0x01, 0x09] => {
+            #[cfg(feature = "deflate64")]
+            {
+                use crate::pipeline::deflate64::Deflate64Coder;
+                Ok(Box::new(Deflate64Coder))
+            }
+            #[cfg(not(feature = "deflate64"))]
+            {
+                Err(SevenZippyError::missing_coder("Deflate64"))
+            }
+        }
 
         // ── BZip2 — feature-gated ───────────────────────────────────────────
         [0x04, 0x02, 0x02] => {

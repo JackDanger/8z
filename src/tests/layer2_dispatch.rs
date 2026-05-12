@@ -121,9 +121,24 @@ fn deflate_dispatches_or_is_missing() {
     }
 }
 
+/// Deflate64 dispatches to Deflate64Coder when the `deflate64` feature is enabled
+/// (decode-only — no Rust encoder), or returns MissingCoder when disabled.
 #[test]
-fn deflate64_is_missing() {
-    assert_missing_coder(&MethodId::deflate64(), "Deflate64");
+fn deflate64_dispatches_or_is_missing() {
+    let result = coder_for(&MethodId::deflate64());
+    #[cfg(feature = "deflate64")]
+    {
+        let coder =
+            result.expect("Deflate64 coder must be available when deflate64 feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::deflate64());
+    }
+    #[cfg(not(feature = "deflate64"))]
+    {
+        assert!(
+            matches!(result, Err(SevenZippyError::MissingCoder { .. })),
+            "expected MissingCoder when deflate64 feature is disabled, got {result:?}"
+        );
+    }
 }
 
 /// When built with `--features ppmd` (the default), dispatch returns a live

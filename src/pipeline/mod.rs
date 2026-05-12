@@ -12,6 +12,8 @@ mod coder_trait;
 mod copy;
 #[cfg(feature = "deflate")]
 pub mod deflate;
+#[cfg(feature = "deflate64")]
+pub mod deflate64;
 #[cfg(feature = "delta")]
 pub mod delta;
 mod dispatch;
