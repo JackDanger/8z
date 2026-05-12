@@ -30,8 +30,10 @@ lazippy = { version = "0.1", path = "../lazippy", optional = true }
 # lazippier   = { version = "0.0.1", path = "../lazippier",   optional = true }
 # pippyzippy  = { version = "0.0.1", path = "../pippyzippy",  optional = true }
 bzippy2     = { version = "0.1",   path = "../bzippy2",     optional = true }
-# gzippy is the target Phase 2 backend but is not yet published to crates.io;
-# using flate2 directly for Phase 1 Deflate support.
+# gzippy 0.5 does not yet expose raw-deflate primitives (its public API only
+# produces gzip-framed output); using flate2 directly for Phase 1 Deflate
+# support until upstream adds a raw-deflate API.
+# See: https://github.com/JackDanger/gzippy/issues/91
 flate2      = { version = "1",                              optional = true }
 # jumpzippy   = { version = "0.0.1", path = "../jumpzippy",   optional = true }
 # jumpzippier = { version = "0.0.1", path = "../jumpzippier", optional = true }
