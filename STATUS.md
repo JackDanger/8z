@@ -1,11 +1,11 @@
 # 8z STATUS
 
-**Current focus:** 8z umbrella scaffolding (Phase C) / next: Copy coder + pipeline (task #6)
+**Current focus:** Phase C scaffolding closing: oracle harness + layer tests (task #7)
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|
-| Container header | 8z | ✅ | ⬜ | n/a | ⬜ | ⬜ | ⬜ |
-| Copy | 8z (in-tree) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Container header | 8z | ✅ | ✅ | n/a | ⬜ | ⬜ | ⬜ |
+| Copy | 8z (in-tree) | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ |
 | LZMA | lazippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | LZMA2 | lazippier | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | PPMd | pippyzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |

@@ -73,6 +73,26 @@ impl EightZError {
     pub fn not_yet_implemented(label: &'static str) -> Self {
         EightZError::NotYetImplemented(label)
     }
+
+    /// Construct a [`MissingCoder`](EightZError::MissingCoder) error.
+    pub fn missing_coder(name: &'static str) -> Self {
+        EightZError::MissingCoder { name }
+    }
+
+    /// Construct an [`UnsupportedMethod`](EightZError::UnsupportedMethod) error.
+    pub fn unsupported_method(method_id: Vec<u8>) -> Self {
+        let name = match method_id.as_slice() {
+            [0x03, 0x01, 0x01] => Some("LZMA".to_string()),
+            [0x21] => Some("LZMA2".to_string()),
+            [0x04, 0x01, 0x08] => Some("Deflate".to_string()),
+            [0x04, 0x01, 0x09] => Some("Deflate64".to_string()),
+            [0x04, 0x02, 0x02] => Some("BZip2".to_string()),
+            [0x03, 0x04, 0x01] => Some("PPMd".to_string()),
+            [0x06, 0xF1, 0x07, 0x01] => Some("AES-SHA256".to_string()),
+            _ => None,
+        };
+        EightZError::UnsupportedMethod { method_id, name }
+    }
 }
 
 /// Convenience alias used throughout 8z.

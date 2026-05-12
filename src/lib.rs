@@ -21,3 +21,6 @@ mod write;
 pub use error::{EightZError, EightZResult};
 pub use read::{Archive, ArchiveReader};
 pub use write::ArchiveBuilder;
+
+#[cfg(test)]
+mod tests;
