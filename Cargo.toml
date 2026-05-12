@@ -58,3 +58,15 @@ lto           = "fat"
 codegen-units = 1
 opt-level     = 3
 strip         = true
+
+[[bench]]
+name = "archive_read"
+harness = false
+
+[[bench]]
+name = "archive_write"
+harness = false
+
+[[bench]]
+name = "container_parse"
+harness = false

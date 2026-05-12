@@ -21,15 +21,16 @@ Container → Header → Folders → Coders
                               ├── ... (future)
 ```
 
-Currently: only Copy coder is live. All others blocked until their sub-crates land.
+Currently: nothing is live yet — Phase C scaffolding only. Copy coder lands in task #6; codec sub-crates land in later iterations. See `STATUS.md` for the live matrix.
 
-## Coder Routing Table (status from STATUS.md)
+## Coder Routing Table (snapshot — STATUS.md is the source of truth)
 
 | Coder | Crate | Notes |
 |---|---|---|
-| Container header | 8z | 🟡 (container parser in flight) |
-| Copy | 8z | ✅ (round-trip working) |
-| LZMA | lazippy | ⬜ (not started) |
+| Container header | 8z | 🟡 (parser in flight, task #5) |
+| Copy | 8z | ⬜ (in-tree, task #6) |
+| LZMA | lazippy | ⬜ (template repo exists: https://github.com/JackDanger/lazippy) |
+| Deflate | gzippy | ⬜ (lib-API PR open: https://github.com/JackDanger/gzippy/pull/86) |
 | (others) | sub-crates | ⬜ (repos not yet created) |
 
 ## Iteration Loop
