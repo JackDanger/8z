@@ -120,36 +120,70 @@ fn we_read_seven_zips_lzma_archive() {
     assert_slices_eq!(extracted, input);
 }
 
-// ── BZip2 cross-validation (ignored) ─────────────────────────────────────────
+// ── BZip2 cross-validation (live via bzippy2 wrapper) ────────────────────────
 
+/// Write a small BZip2 archive with 7zippy, then extract it with `7zz`.
+#[cfg(feature = "bzip2")]
 #[test]
-#[ignore = "BZip2 not yet implemented; un-ignore when bzippy2 is wired in dispatch.rs"]
 fn seven_zip_reads_our_bzip2_archive() {
     require_7zz!();
-    todo!()
+
+    use crate::pipeline::bzip2::Bzip2Coder;
+    let payload = b"Hello, from 7zippy BZip2!".to_vec();
+    let mut b = ArchiveBuilder::new();
+    b.add_file("greeting.txt", payload.clone(), Box::new(Bzip2Coder));
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, payload);
 }
 
+/// Ask `7zz` to compress data with BZip2, then decompress with 7zippy.
+#[cfg(feature = "bzip2")]
 #[test]
-#[ignore = "BZip2 not yet implemented; un-ignore when bzippy2 is wired in dispatch.rs"]
 fn we_read_seven_zips_bzip2_archive() {
     require_7zz!();
-    todo!()
+
+    let input = fixtures::random(0xB2B2_B2B2, 1024);
+    let archive = seven_zip_compress(&input, &CoderSpec::Bzip2 { level: 5 });
+
+    let parsed = Archive::parse(&archive).expect("7zippy must parse 7zz BZip2 archive");
+    assert_eq!(parsed.file_count(), 1);
+    let extracted = parsed.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
 }
 
-// ── Deflate cross-validation (ignored) ───────────────────────────────────────
+// ── Deflate cross-validation (live via flate2 backend) ───────────────────────
 
+/// Write a small Deflate archive with 7zippy, then extract it with `7zz`.
+#[cfg(feature = "deflate")]
 #[test]
-#[ignore = "Deflate not yet implemented; un-ignore when gzippy lib API is wired in dispatch.rs"]
 fn seven_zip_reads_our_deflate_archive() {
     require_7zz!();
-    todo!()
+
+    use crate::pipeline::deflate::DeflateCoder;
+    let payload = b"Hello, from 7zippy Deflate!".to_vec();
+    let mut b = ArchiveBuilder::new();
+    b.add_file("greeting.txt", payload.clone(), Box::new(DeflateCoder));
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, payload);
 }
 
+/// Ask `7zz` to compress data with Deflate, then decompress with 7zippy.
+#[cfg(feature = "deflate")]
 #[test]
-#[ignore = "Deflate not yet implemented; un-ignore when gzippy lib API is wired in dispatch.rs"]
 fn we_read_seven_zips_deflate_archive() {
     require_7zz!();
-    todo!()
+
+    let input = fixtures::random(0x0DEF_1A7E, 1024);
+    let archive = seven_zip_compress(&input, &CoderSpec::Deflate { level: 5 });
+
+    let parsed = Archive::parse(&archive).expect("7zippy must parse 7zz Deflate archive");
+    assert_eq!(parsed.file_count(), 1);
+    let extracted = parsed.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
 }
 
 // ── PPMd cross-validation (ignored) ──────────────────────────────────────────

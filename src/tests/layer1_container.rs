@@ -91,7 +91,6 @@ fn parses_lzma_default_archive() {
 
 /// Parse a BZip2-compressed `.7z` archive.
 #[test]
-#[ignore = "bzip2_default.7z fixture not yet committed; un-ignore when BZip2 oracle fixture is generated"]
 fn parses_bzip2_archive() {
     let bytes = fixture_bytes("bzip2_default.7z");
     let archive = Archive::parse(&bytes).expect("bzip2_default.7z should parse");
@@ -105,9 +104,13 @@ fn parses_bzip2_archive() {
 
 /// Parse a Deflate-compressed `.7z` archive.
 #[test]
-#[ignore = "deflate_default.7z fixture not yet committed; un-ignore when Deflate oracle fixture is generated"]
 fn parses_deflate_archive() {
     let bytes = fixture_bytes("deflate_default.7z");
     let archive = Archive::parse(&bytes).expect("deflate_default.7z should parse");
     assert_eq!(archive.file_count(), 1);
+
+    let container = ContainerArchive::parse(&bytes).unwrap();
+    let ms = container.header.main_streams.as_ref().unwrap();
+    let folder = &ms.folders[0];
+    assert_eq!(folder.coders[0].method_id, MethodId::deflate());
 }

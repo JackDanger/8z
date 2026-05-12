@@ -94,9 +94,39 @@ fn pippyzippy_lib_tests_pass() {
 }
 
 #[test]
-#[ignore = "bzippy2 repo not yet created; un-ignore when JackDanger/bzippy2 lands"]
 fn bzippy2_lib_tests_pass() {
-    todo!()
+    let cargo = match find_cargo() {
+        Some(c) => c,
+        None => {
+            eprintln!("[skip] cargo not found — per-coder smoke test skipped");
+            return;
+        }
+    };
+
+    let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let bzippy2_path = workspace_root.join("../bzippy2");
+    if !bzippy2_path.exists() {
+        eprintln!(
+            "[skip] bzippy2 not found at {} — per-coder smoke test skipped",
+            bzippy2_path.display()
+        );
+        return;
+    }
+
+    let output = Command::new(&cargo)
+        .arg("test")
+        .arg("--lib")
+        .arg("--manifest-path")
+        .arg(bzippy2_path.join("Cargo.toml"))
+        .output()
+        .expect("failed to spawn cargo test for bzippy2");
+
+    assert!(
+        output.status.success(),
+        "bzippy2 lib tests failed:\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
 }
 
 #[test]

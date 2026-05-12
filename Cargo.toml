@@ -25,13 +25,14 @@ path = "src/main.rs"
 thiserror = "1"
 crc32fast = "1"
 
-# Codec sub-crates (feature-gated). Only lazippy is wired up live in Phase C;
-# the others are placeholders that get uncommented as their repos land.
+# Codec sub-crates (feature-gated).
 lazippy = { version = "0.1", path = "../lazippy", optional = true }
 # lazippier   = { version = "0.0.1", path = "../lazippier",   optional = true }
 # pippyzippy  = { version = "0.0.1", path = "../pippyzippy",  optional = true }
-# bzippy2     = { version = "0.0.1", path = "../bzippy2",     optional = true }
-# gzippy      = { version = "0.4",   path = "../gzippy",      optional = true }
+bzippy2     = { version = "0.1",   path = "../bzippy2",     optional = true }
+# gzippy is the target Phase 2 backend but is not yet published to crates.io;
+# using flate2 directly for Phase 1 Deflate support.
+flate2      = { version = "1",                              optional = true }
 # jumpzippy   = { version = "0.0.1", path = "../jumpzippy",   optional = true }
 # jumpzippier = { version = "0.0.1", path = "../jumpzippier", optional = true }
 # deltazippy  = { version = "0.0.1", path = "../deltazippy",  optional = true }
@@ -42,12 +43,12 @@ tempfile = "3"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
-default = ["lzma"]
+default = ["lzma", "deflate", "bzip2"]
 lzma    = ["dep:lazippy"]
+deflate = ["dep:flate2"]
+bzip2   = ["dep:bzippy2"]
 # lzma2   = ["dep:lazippier", "lzma"]
 # ppmd    = ["dep:pippyzippy"]
-# bzip2   = ["dep:bzippy2"]
-# deflate = ["dep:gzippy"]
 # bcj     = ["dep:jumpzippy"]
 # bcj2    = ["dep:jumpzippier"]
 # delta   = ["dep:deltazippy"]
