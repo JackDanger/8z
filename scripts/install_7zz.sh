@@ -17,6 +17,10 @@ elif [ "$os" = "Linux" ]; then
     echo "Installing 7zz on Linux..."
     sudo apt-get update
     sudo apt-get install -y 7zip
+    # Ensure 7zz is available in PATH by creating a symlink if needed
+    if [ ! -f /usr/bin/7zz ] && [ -f /usr/lib/p7zip/7zz ]; then
+        sudo ln -sf /usr/lib/p7zip/7zz /usr/bin/7zz
+    fi
 else
     echo "ERROR: unsupported OS '$os'" >&2
     exit 1
