@@ -15,6 +15,8 @@ pub mod delta;
 mod dispatch;
 #[cfg(feature = "lzma")]
 pub mod lzma;
+#[cfg(feature = "ppmd")]
+pub mod ppmd;
 
 pub use coder_trait::Coder;
 pub use copy::CopyCoder;

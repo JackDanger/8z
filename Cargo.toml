@@ -26,10 +26,10 @@ thiserror = "1"
 crc32fast = "1"
 
 # Codec sub-crates (feature-gated).
-lazippy = { version = "0.1", path = "../lazippy", optional = true }
+lazippy    = { version = "0.1",   path = "../lazippy",    optional = true }
+pippyzippy = { version = "0.1",   path = "../pippyzippy", optional = true }
+bzippy2    = { version = "0.1",   path = "../bzippy2",     optional = true }
 # lazippier   = { version = "0.0.1", path = "../lazippier",   optional = true }
-# pippyzippy  = { version = "0.0.1", path = "../pippyzippy",  optional = true }
-bzippy2     = { version = "0.1",   path = "../bzippy2",     optional = true }
 # gzippy 0.5 does not yet expose raw-deflate primitives (its public API only
 # produces gzip-framed output); using flate2 directly for Phase 1 Deflate
 # support until upstream adds a raw-deflate API.
@@ -45,13 +45,13 @@ tempfile = "3"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
-default = ["lzma", "deflate", "bzip2", "delta"]
+default = ["lzma", "deflate", "bzip2", "delta", "ppmd"]
 lzma    = ["dep:lazippy"]
 deflate = ["dep:flate2"]
 bzip2   = ["dep:bzippy2"]
 delta   = []  # in-tree implementation; no sub-crate dependency
+ppmd    = ["dep:pippyzippy"]
 # lzma2   = ["dep:lazippier", "lzma"]
-# ppmd    = ["dep:pippyzippy"]
 # bcj     = ["dep:jumpzippy"]
 # bcj2    = ["dep:jumpzippier"]
 # delta   = ["dep:deltazippy"]

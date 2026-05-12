@@ -11,6 +11,7 @@ set -euo pipefail
 SIBLINGS=(
   lazippy
   bzippy2
+  pippyzippy
 )
 
 REPO_ORG="${SIBLING_ORG:-JackDanger}"

@@ -83,9 +83,21 @@ pub fn coder_for(coder_meta: &CoderMeta) -> SevenZippyResult<Box<dyn Coder>> {
             }
         }
 
+        // ── PPMd — feature-gated ────────────────────────────────────────────
+        [0x03, 0x04, 0x01] => {
+            #[cfg(feature = "ppmd")]
+            {
+                use crate::pipeline::ppmd::PpmdCoder;
+                PpmdCoder::from_props(&coder_meta.properties).map(|c| Box::new(c) as Box<dyn Coder>)
+            }
+            #[cfg(not(feature = "ppmd"))]
+            {
+                Err(SevenZippyError::missing_coder("PPMd"))
+            }
+        }
+
         // ── codec stubs — feature-gated ─────────────────────────────────────
         [0x21] => Err(SevenZippyError::missing_coder("LZMA2")),
-        [0x03, 0x04, 0x01] => Err(SevenZippyError::missing_coder("PPMd")),
         [0x03, 0x03, ..] => Err(SevenZippyError::missing_coder("BCJ family")),
         [0x06, 0xF1, 0x07, 0x01] => Err(SevenZippyError::missing_coder("AES+SHA-256")),
 
