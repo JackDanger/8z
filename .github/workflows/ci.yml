@@ -16,6 +16,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout lazippy sibling
+        uses: actions/checkout@v4
+        with:
+          repository: JackDanger/lazippy
+          path: lazippy-sibling
+
+      - name: Move lazippy into sibling location
+        run: |
+          # actions/checkout cannot check out into a parent directory, so we land
+          # it under the workspace and then move it.
+          mkdir -p ../lazippy
+          cp -r lazippy-sibling/. ../lazippy/
+          rm -rf lazippy-sibling
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -25,7 +39,7 @@ jobs:
 
       - name: Verify 7zz
         run: |
-          7zz --version || (echo "7zz not found"; exit 1)
+          7zz | head -1 || (echo "7zz not found"; exit 1)
 
       - name: Cache cargo
         uses: actions/cache@v4
