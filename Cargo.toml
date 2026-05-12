@@ -27,7 +27,7 @@ crc32fast = "1"
 
 # Codec sub-crates (feature-gated). Only lazippy is wired up live in Phase C;
 # the others are placeholders that get uncommented as their repos land.
-lazippy = { version = "0.0.1", path = "../lazippy", optional = true }
+lazippy = { version = "0.1", path = "../lazippy", optional = true }
 # lazippier   = { version = "0.0.1", path = "../lazippier",   optional = true }
 # pippyzippy  = { version = "0.0.1", path = "../pippyzippy",  optional = true }
 # bzippy2     = { version = "0.0.1", path = "../bzippy2",     optional = true }

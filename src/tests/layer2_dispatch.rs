@@ -11,7 +11,7 @@
 
 use crate::container::MethodId;
 use crate::error::SevenZippyError;
-use crate::pipeline::coder_for;
+use crate::pipeline::coder_for_method as coder_for;
 
 // ── Copy coder (always enabled, in-tree) ─────────────────────────────────────
 
@@ -31,26 +31,29 @@ fn copy_coder_is_identity_on_small_input() {
     assert_eq!(decoded, input);
 }
 
-// ── LZMA: feature-gated — currently returns NotYetImplemented when `lzma` feature is on ──
+// ── LZMA: feature-gated — wired via lazippy ──────────────────────────────────
 
-/// When built with `--features lzma` (the default), the `lzma` feature is
-/// enabled but lazippy's integration is a stub that returns
-/// `SevenZippyError::NotYetImplemented`.
+/// When built with `--features lzma` (the default), dispatch returns a live
+/// `LzmaCoder` backed by lazippy.
 ///
 /// When built without the `lzma` feature, dispatch returns
 /// `SevenZippyError::MissingCoder { name: "LZMA" }`.
 #[test]
-fn lzma_coder_is_not_yet_ready() {
+fn lzma_coder_dispatches() {
     let result = coder_for(&MethodId::lzma());
-    match result {
-        Err(SevenZippyError::NotYetImplemented(_)) => {
-            // lzma feature is enabled but integration not wired — expected.
-        }
-        Err(SevenZippyError::MissingCoder { name: "LZMA" }) => {
-            // lzma feature is disabled — also expected.
-        }
-        Ok(_) => panic!("LZMA dispatch should not succeed yet"),
-        Err(e) => panic!("unexpected error for LZMA dispatch: {e}"),
+    #[cfg(feature = "lzma")]
+    {
+        // LZMA is wired — must succeed.
+        let coder = result.expect("LZMA coder must be available when lzma feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::lzma());
+    }
+    #[cfg(not(feature = "lzma"))]
+    {
+        // Feature disabled — must return MissingCoder.
+        assert!(
+            matches!(result, Err(SevenZippyError::MissingCoder { .. })),
+            "expected MissingCoder when lzma feature is disabled, got {result:?}"
+        );
     }
 }
 

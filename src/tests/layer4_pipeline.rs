@@ -88,20 +88,46 @@ fn round_trip_copy_sequential() {
     assert_slices_eq!(extracted, input);
 }
 
-// ── LZMA pipeline (ignored until lazippy is wired) ───────────────────────────
+// ── LZMA pipeline (live via lazippy wrapper) ─────────────────────────────────
 
+/// Round-trip 64 KiB of seeded random bytes through the LZMA pipeline.
+#[cfg(feature = "lzma")]
 #[test]
-#[ignore = "LZMA not yet implemented in lazippy; un-ignore after LazippyCoder is wired in dispatch.rs"]
 fn round_trip_lzma_64k() {
-    // When un-ignored: use an ArchiveBuilder variant that selects LZMA coder.
-    todo!()
+    use crate::pipeline::lzma::LzmaCoder;
+    let input = fixtures::random(0xDEAD_BEEF, 65_536);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("payload.bin", input.clone(), Box::new(LzmaCoder::new()));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    assert_eq!(archive.file_count(), 1);
+
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
 }
 
+/// Verify LZMA compresses 1 MiB of zeros to significantly less than 1 MiB.
+#[cfg(feature = "lzma")]
 #[test]
-#[ignore = "LZMA not yet implemented; un-ignore with round_trip_lzma_64k"]
 fn round_trip_lzma_zeros_compresses_well() {
-    // Assert that LZMA output on zeros is significantly smaller than input.
-    todo!()
+    use crate::pipeline::lzma::LzmaCoder;
+    let input = fixtures::zeros(1024 * 1024);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("zeros.bin", input.clone(), Box::new(LzmaCoder::new()));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+
+    // The archive should be much smaller than the original 1 MiB input
+    // (LZMA compresses zeros to well under 1% of input size).
+    assert!(
+        archive_bytes.len() < input.len() / 10,
+        "LZMA should compress 1 MiB of zeros heavily; archive is {} bytes",
+        archive_bytes.len()
+    );
 }
 
 // ── Other codecs (ignored until respective crates are wired) ─────────────────

@@ -1,38 +1,45 @@
 //! Method-ID → `Box<dyn Coder>` dispatch.
 //!
-//! This is the single place where codec sub-crates plug in. Currently only the
-//! in-tree Copy coder is wired. All others return `SevenZippyError::MissingCoder` (or
-//! `SevenZippyError::UnsupportedMethod` for completely unknown method IDs).
+//! This is the single place where codec sub-crates plug in. Currently the
+//! Copy and LZMA coders are wired. All others return
+//! `SevenZippyError::MissingCoder` (or `SevenZippyError::UnsupportedMethod`
+//! for completely unknown method IDs).
 
-use crate::container::MethodId;
+use crate::container::{Coder as CoderMeta, MethodId};
 use crate::error::{SevenZippyError, SevenZippyResult};
 use crate::pipeline::{Coder, CopyCoder};
 
-/// Return a `Box<dyn Coder>` for the given 7z method ID.
+/// Return a `Box<dyn Coder>` for the given 7z coder metadata.
+///
+/// The full `CoderMeta` is taken (not just the `MethodId`) so that coders with
+/// codec-specific properties (e.g. LZMA's 5-byte props) can read them.
 ///
 /// # Errors
 ///
 /// - [`SevenZippyError::MissingCoder`] — the codec is known but its feature flag is
 ///   disabled for this build.
 /// - [`SevenZippyError::UnsupportedMethod`] — the method ID is not recognised at all.
-pub fn coder_for(method_id: &MethodId) -> SevenZippyResult<Box<dyn Coder>> {
-    let m = method_id.0.as_slice();
+pub fn coder_for(coder_meta: &CoderMeta) -> SevenZippyResult<Box<dyn Coder>> {
+    let m = coder_meta.method_id.0.as_slice();
     match m {
         [0x00] => Ok(Box::new(CopyCoder)),
 
-        // ── codec stubs — feature-gated ─────────────────────────────────────
+        // ── LZMA — feature-gated ────────────────────────────────────────────
         [0x03, 0x01, 0x01] => {
             #[cfg(feature = "lzma")]
             {
-                Err(SevenZippyError::not_yet_implemented(
-                    "lazippy LZMA coder integration",
-                ))
+                use crate::pipeline::lzma::LzmaCoder;
+                Ok(Box::new(LzmaCoder::with_props(
+                    coder_meta.properties.clone(),
+                )))
             }
             #[cfg(not(feature = "lzma"))]
             {
                 Err(SevenZippyError::missing_coder("LZMA"))
             }
         }
+
+        // ── codec stubs — feature-gated ─────────────────────────────────────
         [0x21] => Err(SevenZippyError::missing_coder("LZMA2")),
         [0x04, 0x01, 0x08] => Err(SevenZippyError::missing_coder("Deflate")),
         [0x04, 0x01, 0x09] => Err(SevenZippyError::missing_coder("Deflate64")),
@@ -42,8 +49,23 @@ pub fn coder_for(method_id: &MethodId) -> SevenZippyResult<Box<dyn Coder>> {
         [0x03] => Err(SevenZippyError::missing_coder("Delta")),
         [0x06, 0xF1, 0x07, 0x01] => Err(SevenZippyError::missing_coder("AES+SHA-256")),
 
-        _ => Err(SevenZippyError::unsupported_method(method_id.0.clone())),
+        _ => Err(SevenZippyError::unsupported_method(
+            coder_meta.method_id.0.clone(),
+        )),
     }
+}
+
+/// Return a `Box<dyn Coder>` for the given 7z method ID with empty properties.
+///
+/// Convenience wrapper for callers that only have a `MethodId` (e.g. tests).
+pub fn coder_for_method(method_id: &MethodId) -> SevenZippyResult<Box<dyn Coder>> {
+    let meta = CoderMeta {
+        method_id: method_id.clone(),
+        num_in_streams: 1,
+        num_out_streams: 1,
+        properties: Vec::new(),
+    };
+    coder_for(&meta)
 }
 
 #[cfg(test)]
@@ -52,7 +74,7 @@ mod tests {
 
     #[test]
     fn copy_coder_dispatches() {
-        let coder = coder_for(&MethodId::copy()).unwrap();
+        let coder = coder_for_method(&MethodId::copy()).unwrap();
         let data = b"test data";
         let encoded = coder.encode(data).unwrap();
         let decoded = coder.decode(&encoded, data.len() as u64).unwrap();
@@ -61,17 +83,35 @@ mod tests {
 
     #[test]
     fn lzma2_is_missing() {
-        let result = coder_for(&MethodId::lzma2());
+        let result = coder_for_method(&MethodId::lzma2());
         assert!(matches!(result, Err(SevenZippyError::MissingCoder { .. })));
     }
 
     #[test]
     fn unknown_method_is_unsupported() {
         let unknown = MethodId(vec![0xDE, 0xAD, 0xBE, 0xEF]);
-        let result = coder_for(&unknown);
+        let result = coder_for_method(&unknown);
         assert!(matches!(
             result,
             Err(SevenZippyError::UnsupportedMethod { .. })
         ));
+    }
+
+    #[cfg(feature = "lzma")]
+    #[test]
+    fn lzma_coder_dispatches() {
+        // Standard LZMA props: props_byte=0x5D, dict_size=1MiB
+        let props = vec![0x5D, 0x00, 0x00, 0x10, 0x00];
+        let meta = CoderMeta {
+            method_id: MethodId::lzma(),
+            num_in_streams: 1,
+            num_out_streams: 1,
+            properties: props,
+        };
+        let coder = coder_for(&meta).unwrap();
+        let input = b"hello LZMA world";
+        let encoded = coder.encode(input).unwrap();
+        let decoded = coder.decode(&encoded, input.len() as u64).unwrap();
+        assert_eq!(decoded, input);
     }
 }

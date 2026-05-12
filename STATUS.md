@@ -1,12 +1,12 @@
 # 7zippy STATUS
 
-**Current focus:** Phase C scaffolding complete. Next: lazippy range coder (decoder). See ROADMAP.md.
+**Current focus:** Phase 1 codec parity via wrappers. LZMA ✅. Next: Deflate (flate2), BZip2 (bzippy2).
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|
 | Container header | 7zippy | ✅ | ✅ | n/a | ✅ | ✅ | ⬜ |
 | Copy | 7zippy (in-tree) | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ |
-| LZMA | lazippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| LZMA | lazippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | LZMA2 | lazippier | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | PPMd | pippyzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BZip2 | bzippy2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |

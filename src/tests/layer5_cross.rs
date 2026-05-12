@@ -81,20 +81,43 @@ fn we_read_committed_copy_only_64k_fixture() {
     assert_eq!(content.len(), 65_536);
 }
 
-// ── LZMA cross-validation (ignored) ──────────────────────────────────────────
+// ── LZMA cross-validation (live via lazippy wrapper) ─────────────────────────
 
+/// Write a small LZMA archive with 7zippy, then extract it with `7zz`.
+#[cfg(feature = "lzma")]
 #[test]
-#[ignore = "LZMA not yet implemented; un-ignore after LazippyCoder round-trips correctly"]
 fn seven_zip_reads_our_lzma_archive() {
     require_7zz!();
-    todo!()
+
+    use crate::pipeline::lzma::LzmaCoder;
+    let payload = b"Hello, from 7zippy LZMA!".to_vec();
+    let mut b = ArchiveBuilder::new();
+    b.add_file("greeting.txt", payload.clone(), Box::new(LzmaCoder::new()));
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, payload);
 }
 
+/// Ask `7zz` to compress data with LZMA, then decompress with 7zippy.
+#[cfg(feature = "lzma")]
 #[test]
-#[ignore = "LZMA not yet implemented; un-ignore after LazippyCoder round-trips correctly"]
 fn we_read_seven_zips_lzma_archive() {
     require_7zz!();
-    todo!()
+
+    let input = fixtures::random(0xCAFEBABE, 1024);
+    let archive = seven_zip_compress(
+        &input,
+        &CoderSpec::Lzma {
+            level: 5,
+            dict_size: None,
+        },
+    );
+
+    let parsed = Archive::parse(&archive).expect("7zippy must parse 7zz LZMA archive");
+    assert_eq!(parsed.file_count(), 1);
+    let extracted = parsed.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
 }
 
 // ── BZip2 cross-validation (ignored) ─────────────────────────────────────────

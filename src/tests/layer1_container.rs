@@ -78,7 +78,6 @@ fn parses_copy_only_64k_archive() {
 /// Requires `corpora/fixtures/archives/lzma_default.7z` to exist (committed
 /// once the oracle fixture generator is run for the LZMA coder).
 #[test]
-#[ignore = "lzma_default.7z fixture not yet committed; un-ignore when LZMA oracle fixture is generated"]
 fn parses_lzma_default_archive() {
     let bytes = fixture_bytes("lzma_default.7z");
     let archive = Archive::parse(&bytes).expect("lzma_default.7z should parse");

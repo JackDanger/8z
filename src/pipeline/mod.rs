@@ -7,10 +7,12 @@
 mod coder_trait;
 mod copy;
 mod dispatch;
+#[cfg(feature = "lzma")]
+pub mod lzma;
 
 pub use coder_trait::Coder;
 pub use copy::CopyCoder;
-pub use dispatch::coder_for;
+pub use dispatch::{coder_for, coder_for_method};
 
 use crate::container::crc::crc32;
 use crate::container::{Coder as CoderMeta, Folder, MethodId};
@@ -27,7 +29,7 @@ pub fn decode_folder(folder: &Folder, packed: &[u8]) -> SevenZippyResult<Vec<u8>
         ));
     }
     let coder_meta = &folder.coders[0];
-    let coder = coder_for(&coder_meta.method_id)?;
+    let coder = coder_for(coder_meta)?;
     let unpack_size = folder
         .unpack_sizes
         .first()
