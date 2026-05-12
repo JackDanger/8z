@@ -47,6 +47,8 @@ pub enum CoderSpec {
     Deflate64,
     /// BCJ x86 filter. `-m0=bcj`
     Bcj,
+    /// BCJ2 4-stream filter paired with LZMA. `-m0=BCJ2 -m1=LZMA`
+    Bcj2,
 }
 
 impl CoderSpec {
@@ -73,6 +75,9 @@ impl CoderSpec {
             CoderSpec::Ppmd { .. } => "ppmd".to_string(),
             CoderSpec::Delta { distance } => format!("delta:{distance}"),
             CoderSpec::Bcj => "bcj".to_string(),
+            // BCJ2 is special: it uses two -m arguments (BCJ2 + LZMA).
+            // m_arg() returns only the first; seven_zip_compress handles the extra arg.
+            CoderSpec::Bcj2 => "BCJ2".to_string(),
         }
     }
 
@@ -88,6 +93,7 @@ impl CoderSpec {
             CoderSpec::Ppmd { level, .. } => *level,
             CoderSpec::Delta { .. } => 0,
             CoderSpec::Bcj => 0,
+            CoderSpec::Bcj2 => 5,
         }
     }
 }
@@ -176,11 +182,15 @@ pub fn seven_zip_compress(input: &[u8], spec: &CoderSpec) -> Vec<u8> {
     let mx = format!("-mx={}", spec.mx_arg());
     let m0 = format!("-m0={}", spec.m_arg());
 
-    let output = Command::new(&sevenzip)
-        .arg("a")
-        .arg("-t7z")
-        .arg(&m0)
-        .arg(&mx)
+    let mut cmd = Command::new(&sevenzip);
+    cmd.arg("a").arg("-t7z").arg(&m0).arg(&mx);
+
+    // BCJ2 requires a second method argument: -m1=LZMA (inner compressor).
+    if matches!(spec, CoderSpec::Bcj2) {
+        cmd.arg("-m1=LZMA");
+    }
+
+    let output = cmd
         .arg(&archive_path)
         .arg(&payload_path)
         .stdout(Stdio::piped())

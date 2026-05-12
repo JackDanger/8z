@@ -6,6 +6,8 @@
 
 #[cfg(feature = "bcj")]
 pub mod bcj;
+#[cfg(feature = "bcj2")]
+pub mod bcj2_folder;
 #[cfg(feature = "bzip2")]
 pub mod bzip2;
 mod coder_trait;
@@ -35,13 +37,24 @@ use crate::error::{SevenZippyError, SevenZippyResult};
 /// Decode one folder's packed bytes through its coder pipeline, producing
 /// the final unpacked stream.
 ///
-/// For Phase C: only single-coder folders (no bonds) are supported.
-pub fn decode_folder(folder: &Folder, packed: &[u8]) -> SevenZippyResult<Vec<u8>> {
+/// `packed_streams` contains the packed byte slices for this folder, one per
+/// unbound input stream (as determined by `folder.packed_stream_indices`).
+/// For single-coder folders, exactly one slice is expected. For BCJ2 folders,
+/// exactly four slices are expected.
+pub fn decode_folder(folder: &Folder, packed_streams: &[&[u8]]) -> SevenZippyResult<Vec<u8>> {
+    // ── BCJ2 multi-coder folder ──────────────────────────────────────────────
+    #[cfg(feature = "bcj2")]
+    if bcj2_folder::is_bcj2_lzma_folder(folder) {
+        return bcj2_folder::decode_bcj2_folder(folder, packed_streams);
+    }
+
+    // ── Single-coder folder (all other codecs) ───────────────────────────────
     if folder.coders.len() != 1 || !folder.bonds.is_empty() {
         return Err(SevenZippyError::not_yet_implemented(
             "multi-coder folder pipeline",
         ));
     }
+    let packed = packed_streams.first().copied().unwrap_or(&[]);
     let coder_meta = &folder.coders[0];
     let coder = coder_for(coder_meta)?;
     let unpack_size = folder
@@ -93,7 +106,7 @@ mod tests {
     fn decode_copy_folder_identity() {
         let data = b"hello world";
         let (packed, folder) = encode_copy_folder(data).unwrap();
-        let unpacked = decode_folder(&folder, &packed).unwrap();
+        let unpacked = decode_folder(&folder, &[packed.as_slice()]).unwrap();
         assert_eq!(unpacked, data);
     }
 
@@ -130,7 +143,7 @@ mod tests {
             unpack_sizes: vec![5],
             unpack_crc: None,
         };
-        let result = decode_folder(&folder, b"hello");
+        let result = decode_folder(&folder, &[b"hello" as &[u8]]);
         assert!(matches!(result, Err(SevenZippyError::NotYetImplemented(_))));
     }
 }

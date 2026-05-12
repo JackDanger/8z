@@ -42,7 +42,7 @@ flate2      = { version = "1",                              optional = true }
 # Deflate64: 64 KiB sliding-window variant of Deflate (decode-only).
 # No good Rust encoder exists; Phase 1 ships decode only.
 deflate64   = { version = "0.1",                            optional = true }
-# jumpzippier = { version = "0.0.1", path = "../jumpzippier", optional = true }
+jumpzippier = { version = "0.0.1", path = "../jumpzippier", optional = true }
 # lockzippy   = { version = "0.0.1", path = "../lockzippy",   optional = true }
 
 [dev-dependencies]
@@ -50,7 +50,7 @@ tempfile = "3"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
-default = ["lzma", "lzma2", "deflate", "deflate64", "bzip2", "delta", "ppmd", "bcj"]
+default = ["lzma", "lzma2", "deflate", "deflate64", "bzip2", "delta", "ppmd", "bcj", "bcj2"]
 lzma      = ["dep:lazippy"]
 deflate   = ["dep:flate2"]
 deflate64 = ["dep:deflate64"]  # in-tree; decode-only (no Rust encoder exists for Phase 1)
@@ -58,8 +58,8 @@ bzip2     = ["dep:bzippy2"]
 delta     = []  # in-tree implementation; no sub-crate dependency
 ppmd      = ["dep:pippyzippy"]
 bcj       = ["dep:lzma-rust2"]  # BCJ filters via lzma-rust2 filter module (Phase 1)
-lzma2   = ["dep:lazippier"]
-# bcj2    = ["dep:jumpzippier"]
+lzma2     = ["dep:lazippier"]
+bcj2      = ["dep:jumpzippier", "lzma"]  # BCJ2 4-stream filter; requires LZMA for inner stream
 # crypto  = ["dep:lockzippy"]
 
 [profile.release]
