@@ -32,7 +32,7 @@ Examples:
   un8z archive.7z              Alias for: 8z x archive.7z (NYI)
 ";
 
-/// Primary entry point — invoked when argv[0] is `8z` or `8za`.
+/// Primary entry point — invoked when argv\[0\] is `8z` or `8za`.
 pub fn run() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
 
@@ -57,7 +57,7 @@ pub fn run() -> ExitCode {
     }
 }
 
-/// Extract entry point — invoked when argv[0] is `un8z` or `8zcat`.
+/// Extract entry point — invoked when argv\[0\] is `un8z` or `8zcat`.
 pub fn run_extract() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     let flags: Vec<&str> = args.iter().skip(1).map(String::as_str).collect();

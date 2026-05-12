@@ -28,8 +28,8 @@ pub struct Bond {
 /// Convenience alias: per-output-stream unpack sizes for one folder.
 ///
 /// There is one entry per coder output stream (usually `num_coders` for simple
-/// single-output coders). Filled in by [`parse_unpack_info`] separately from
-/// [`parse_folder`] because the spec stores them in a sibling `CodersUnpackSize`
+/// single-output coders). Filled in by `parse_unpack_info` separately from
+/// `parse_folder` because the spec stores them in a sibling `CodersUnpackSize`
 /// block.
 pub type UnpackSize = u64;
 
@@ -47,10 +47,10 @@ pub struct Folder {
     /// input stream).
     pub packed_stream_indices: Vec<u64>,
     /// Unpack sizes: one per coder output stream. Filled by
-    /// [`parse_unpack_info`]; empty until then.
+    /// `parse_unpack_info`; empty until then.
     pub unpack_sizes: Vec<UnpackSize>,
     /// CRC32 of the final unpacked output, if present. Filled by
-    /// [`parse_unpack_info`]; `None` until then.
+    /// `parse_unpack_info`; `None` until then.
     pub unpack_crc: Option<u32>,
 }
 

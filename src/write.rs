@@ -17,7 +17,7 @@
 //!
 //! # Format reference
 //!
-//! § 5.3 of `7zFormat.txt` (https://github.com/ip7z/7zip/blob/main/DOC/7zFormat.txt).
+//! § 5.3 of `7zFormat.txt` (<https://github.com/ip7z/7zip/blob/main/DOC/7zFormat.txt>).
 
 use crate::container::crc::crc32;
 use crate::container::signature_header::SIGNATURE;

@@ -1,11 +1,11 @@
 # 8z STATUS
 
-**Current focus:** Phase C closing: final fmt/clippy/test/oracle pass + push (task #10)
+**Current focus:** Phase C scaffolding complete. Next: lazippy range coder (decoder). See ROADMAP.md.
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|
-| Container header | 8z | ✅ | ✅ | n/a | ⬜ | ⬜ | ⬜ |
-| Copy | 8z (in-tree) | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ |
+| Container header | 8z | ✅ | ✅ | n/a | ✅ | ✅ | ⬜ |
+| Copy | 8z (in-tree) | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ |
 | LZMA | lazippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | LZMA2 | lazippier | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | PPMd | pippyzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
