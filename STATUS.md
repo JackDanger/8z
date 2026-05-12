@@ -1,6 +1,6 @@
 # 8z STATUS
 
-**Current focus:** Phase C scaffolding closing: oracle harness + layer tests (task #7)
+**Current focus:** Phase C scaffolding closing: benches + scripts (tasks #8, #9)
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|
