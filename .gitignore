@@ -1,0 +1,8 @@
+target/
+Cargo.lock
+is NOT ignored (8z ships a binary too eventually)
+*.swp
+.DS_Store
+/tmp/8z-corpora/
+**/criterion/
+target-criterion/

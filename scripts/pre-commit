@@ -1,0 +1,21 @@
+#!/bin/bash
+# Pre-commit hook: format + lint checks
+set -e
+
+## cargo fmt --check
+cargo fmt --check || (echo "Format failed — run 'cargo fmt'" >&2 && exit 1)
+
+## cargo clippy --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings || (echo "Clippy failed — fix warnings" >&2 && exit 1)
+
+## Warn if src/ touched but STATUS.md not updated
+if git diff --cached --name-only | grep -qE "^src/|^benches/"; then
+    if ! git diff --cached --name-only | grep -q "^STATUS.md$"; then
+        echo ""
+        echo "⚠️  WARNING: Staged changes touch src/ or benches/ but STATUS.md is not updated."
+        echo "   Are you sure? (Continuing anyway...)"
+        echo ""
+    fi
+fi
+
+exit 0

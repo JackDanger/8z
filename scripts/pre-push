@@ -1,0 +1,15 @@
+#!/bin/bash
+# Pre-push hook: prevent direct push to main
+set -e
+
+# Detect the branch being pushed
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+# If pushing to main, require --no-verify
+if [ "$branch" = "main" ]; then
+    echo "ERROR: direct push to main is blocked. Push to a feature branch first, then open a PR."
+    echo "  To override locally: git push --no-verify origin main"
+    exit 1
+fi
+
+exit 0
