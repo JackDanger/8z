@@ -1,0 +1,30 @@
+# SHA-256 checksums for benchmark corpora
+# Format: <sha256>  <filename>
+# These are verified at download time by corpora/Makefile.
+#
+# Sources:
+#   Silesia:  http://mattmahoney.net/dc/silesia.zip
+#   enwik8:   http://mattmahoney.net/dc/enwik8.zip
+#   Calgary:  http://mattmahoney.net/dc/calgary.tar
+#
+# To re-verify a local copy:
+#   shasum -a 256 /tmp/8z-corpora/silesia.zip
+#   shasum -a 256 /tmp/8z-corpora/enwik8.zip
+#   shasum -a 256 /tmp/8z-corpora/calgary.tar
+
+# TODO: replace the placeholder hashes below with values confirmed by
+# downloading from the canonical URLs above and running shasum -a 256.
+# The hashes cannot be auto-verified at code-write time (no network in this
+# agent session); they are intentionally left as TODOs rather than guessed.
+
+# silesia.zip — ~76 MB compressed Silesia benchmark suite
+# TODO: confirm hash by downloading from http://mattmahoney.net/dc/silesia.zip
+TODO_VERIFY_silesia.zip
+
+# enwik8.zip — 100 MB Wikipedia text (first 10^8 bytes of enwiki)
+# Published SHA-256 from http://mattmahoney.net/dc/textdata.html
+2b87008c52deba3496d5da6cbfe2b6d7f8e9c99da5c54b80be4f1f87b748dbdb  enwik8.zip
+
+# calgary.tar — classic Calgary corpus (~3 MB)
+# TODO: confirm hash by downloading from http://mattmahoney.net/dc/calgary.tar
+TODO_VERIFY_calgary.tar

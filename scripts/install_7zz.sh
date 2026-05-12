@@ -23,7 +23,9 @@ else
 fi
 
 if command -v 7zz >/dev/null 2>&1; then
-    echo "✓ 7zz installed: $(which 7zz)"
+    echo "7zz installed: $(command -v 7zz)"
+    echo "Version check:"
+    7zz --help 2>&1 | head -1
 else
     echo "ERROR: 7zz install failed or not in PATH" >&2
     exit 1

@@ -1,6 +1,6 @@
 # 8z STATUS
 
-**Current focus:** Phase C scaffolding closing: benches + scripts (tasks #8, #9)
+**Current focus:** Phase C closing: final fmt/clippy/test/oracle pass + push (task #10)
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|

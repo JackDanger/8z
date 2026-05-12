@@ -1,4 +1,4 @@
-.PHONY: quick route-check bench ship oracle-check status clean help
+.PHONY: quick route-check bench ship oracle-check status clean corpora corpora-clean help
 
 ## quick: run fast test suite (default)
 quick:
@@ -29,6 +29,14 @@ oracle-check:
 ## status: print current focus and next task
 status:
 	@bash scripts/status.sh
+
+## corpora: download all benchmark corpora to /tmp/8z-corpora/
+corpora:
+	@$(MAKE) -C corpora all
+
+## corpora-clean: remove downloaded benchmark corpora from /tmp/8z-corpora/
+corpora-clean:
+	@$(MAKE) -C corpora clean
 
 ## clean: remove build artifacts
 clean:
