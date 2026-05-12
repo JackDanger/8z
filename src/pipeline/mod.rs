@@ -4,6 +4,8 @@
 //! and the codec implementations (in-tree Copy + sibling crates). `dispatch.rs` is
 //! the single place where each codec plugs in.
 
+#[cfg(feature = "bcj")]
+pub mod bcj;
 #[cfg(feature = "bzip2")]
 pub mod bzip2;
 mod coder_trait;

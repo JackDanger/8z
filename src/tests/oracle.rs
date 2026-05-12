@@ -43,6 +43,8 @@ pub enum CoderSpec {
     Ppmd { level: u32, order: Option<u32> },
     /// Delta filter. `-m0=delta`
     Delta { distance: u32 },
+    /// BCJ x86 filter. `-m0=bcj`
+    Bcj,
 }
 
 impl CoderSpec {
@@ -64,6 +66,7 @@ impl CoderSpec {
             } => format!("ppmd:o={o}"),
             CoderSpec::Ppmd { .. } => "ppmd".to_string(),
             CoderSpec::Delta { distance } => format!("delta:{distance}"),
+            CoderSpec::Bcj => "bcj".to_string(),
         }
     }
 
@@ -77,6 +80,7 @@ impl CoderSpec {
             CoderSpec::Deflate { level } => *level,
             CoderSpec::Ppmd { level, .. } => *level,
             CoderSpec::Delta { .. } => 0,
+            CoderSpec::Bcj => 0,
         }
     }
 }

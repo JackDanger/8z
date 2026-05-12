@@ -221,6 +221,72 @@ fn round_trip_ppmd_64k() {
     assert_slices_eq!(extracted, input);
 }
 
+// ── BCJ family pipeline (live via lzma-rust2 filter module) ──────────────────
+
+/// Round-trip 64 KiB of seeded random bytes through the BCJ x86 filter pipeline.
+#[cfg(feature = "bcj")]
+#[test]
+fn round_trip_bcj_x86_64k() {
+    use crate::pipeline::bcj::{BcjArch, BcjCoder};
+    let input = fixtures::random(0xBCB_CC0DE, 65_536);
+    let mut b = ArchiveBuilder::new();
+    b.add_file(
+        "payload.bin",
+        input.clone(),
+        Box::new(BcjCoder::new(BcjArch::X86)),
+    );
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    assert_eq!(archive.file_count(), 1);
+
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+/// Round-trip 4 KiB through BCJ ARM filter.
+#[cfg(feature = "bcj")]
+#[test]
+fn round_trip_bcj_arm_4k() {
+    use crate::pipeline::bcj::{BcjArch, BcjCoder};
+    let input = fixtures::sequential(4_096);
+    let mut b = ArchiveBuilder::new();
+    b.add_file(
+        "seq.bin",
+        input.clone(),
+        Box::new(BcjCoder::new(BcjArch::Arm)),
+    );
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+/// Verify all BCJ ISA variants encode then decode back to the original.
+#[cfg(feature = "bcj")]
+#[test]
+fn round_trip_bcj_all_arches() {
+    use crate::pipeline::bcj::{BcjArch, BcjCoder};
+    let input = fixtures::random(0xA4CA4C01, 1_024);
+    for arch in [
+        BcjArch::X86,
+        BcjArch::PowerPc,
+        BcjArch::Ia64,
+        BcjArch::Arm,
+        BcjArch::ArmThumb,
+        BcjArch::Sparc,
+    ] {
+        let mut b = ArchiveBuilder::new();
+        b.add_file("payload.bin", input.clone(), Box::new(BcjCoder::new(arch)));
+        let archive_bytes = b.build().unwrap();
+
+        let archive = Archive::parse(&archive_bytes).unwrap();
+        let extracted = archive.reader().extract(0).unwrap();
+        assert_slices_eq!(extracted, input);
+    }
+}
+
 /// Verify PPMd compresses 64 KiB of zeros to significantly less than the input.
 #[cfg(feature = "ppmd")]
 #[test]

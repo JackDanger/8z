@@ -29,15 +29,17 @@ crc32fast = "1"
 lazippy    = { version = "0.1",   path = "../lazippy",    optional = true }
 pippyzippy = { version = "0.1",   path = "../pippyzippy", optional = true }
 bzippy2    = { version = "0.1",   path = "../bzippy2",     optional = true }
+# BCJ filters use the lzma-rust2 filter module (same backend as lazippy uses for LZMA).
+# Phase 1: in-tree BCJ coder backed by lzma_rust2::filter::bcj. No separate jumpzippy
+# sub-crate is needed for Phase 1.
+lzma-rust2  = { version = "0.16", features = ["encoder"], optional = true }
 # lazippier   = { version = "0.0.1", path = "../lazippier",   optional = true }
 # gzippy 0.5 does not yet expose raw-deflate primitives (its public API only
 # produces gzip-framed output); using flate2 directly for Phase 1 Deflate
 # support until upstream adds a raw-deflate API.
 # See: https://github.com/JackDanger/gzippy/issues/91
 flate2      = { version = "1",                              optional = true }
-# jumpzippy   = { version = "0.0.1", path = "../jumpzippy",   optional = true }
 # jumpzippier = { version = "0.0.1", path = "../jumpzippier", optional = true }
-# deltazippy  = { version = "0.0.1", path = "../deltazippy",  optional = true }
 # lockzippy   = { version = "0.0.1", path = "../lockzippy",   optional = true }
 
 [dev-dependencies]
@@ -45,16 +47,15 @@ tempfile = "3"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
-default = ["lzma", "deflate", "bzip2", "delta", "ppmd"]
+default = ["lzma", "deflate", "bzip2", "delta", "ppmd", "bcj"]
 lzma    = ["dep:lazippy"]
 deflate = ["dep:flate2"]
 bzip2   = ["dep:bzippy2"]
 delta   = []  # in-tree implementation; no sub-crate dependency
 ppmd    = ["dep:pippyzippy"]
+bcj     = ["dep:lzma-rust2"]  # BCJ filters via lzma-rust2 filter module (Phase 1)
 # lzma2   = ["dep:lazippier", "lzma"]
-# bcj     = ["dep:jumpzippy"]
 # bcj2    = ["dep:jumpzippier"]
-# delta   = ["dep:deltazippy"]
 # crypto  = ["dep:lockzippy"]
 
 [profile.release]
