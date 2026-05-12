@@ -23,7 +23,7 @@ jobs:
           # it under the workspace and then move it.
           mkdir -p ../lazippy
           cp -r lazippy-sibling/. ../lazippy/
-          rm -rf lazippy-sibling
+          rm -rf ../lazippy/.git lazippy-sibling
 
       - uses: dtolnay/rust-toolchain@stable
 
