@@ -52,9 +52,19 @@ pub fn coder_for(coder_meta: &CoderMeta) -> SevenZippyResult<Box<dyn Coder>> {
             }
         }
 
-        // ── Deflate64: same raw deflate but with 64 KiB window; flate2 does not
-        //    support this variant — leave as MissingCoder until gzippy ships it.
-        [0x04, 0x01, 0x09] => Err(SevenZippyError::missing_coder("Deflate64")),
+        // ── Deflate64 — feature-gated (decode-only) ─────────────────────────────
+        //    64 KiB sliding-window variant; no good Rust encoder exists.
+        [0x04, 0x01, 0x09] => {
+            #[cfg(feature = "deflate64")]
+            {
+                use crate::pipeline::deflate64::Deflate64Coder;
+                Ok(Box::new(Deflate64Coder))
+            }
+            #[cfg(not(feature = "deflate64"))]
+            {
+                Err(SevenZippyError::missing_coder("Deflate64"))
+            }
+        }
 
         // ── BZip2 — feature-gated ───────────────────────────────────────────
         [0x04, 0x02, 0x02] => {
@@ -136,8 +146,19 @@ pub fn coder_for(coder_meta: &CoderMeta) -> SevenZippyResult<Box<dyn Coder>> {
         // BCJ fallback when feature is disabled, or unknown BCJ variant
         [0x03, 0x03, ..] => Err(SevenZippyError::missing_coder("BCJ family")),
 
-        // ── codec stubs — feature-gated ─────────────────────────────────────
-        [0x21] => Err(SevenZippyError::missing_coder("LZMA2")),
+        // ── LZMA2 — feature-gated ───────────────────────────────────────────
+        [0x21] => {
+            #[cfg(feature = "lzma2")]
+            {
+                use crate::pipeline::lzma2::Lzma2Coder;
+                Lzma2Coder::with_props(coder_meta.properties.clone())
+                    .map(|c| Box::new(c) as Box<dyn Coder>)
+            }
+            #[cfg(not(feature = "lzma2"))]
+            {
+                Err(SevenZippyError::missing_coder("LZMA2"))
+            }
+        }
         [0x06, 0xF1, 0x07, 0x01] => Err(SevenZippyError::missing_coder("AES+SHA-256")),
 
         _ => Err(SevenZippyError::unsupported_method(
@@ -172,8 +193,9 @@ mod tests {
         assert_eq!(decoded, data);
     }
 
+    #[cfg(not(feature = "lzma2"))]
     #[test]
-    fn lzma2_is_missing() {
+    fn lzma2_is_missing_without_feature() {
         let result = coder_for_method(&MethodId::lzma2());
         assert!(matches!(result, Err(SevenZippyError::MissingCoder { .. })));
     }

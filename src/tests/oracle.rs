@@ -34,7 +34,7 @@ pub enum CoderSpec {
         dict_size: Option<u32>,
     },
     /// LZMA2 at the given compression level. `-m0=lzma2`
-    Lzma2 { level: u32 },
+    Lzma2 { level: u32, dict_size: Option<u32> },
     /// BZip2. `-m0=bzip2`
     Bzip2 { level: u32 },
     /// Deflate. `-m0=deflate`
@@ -43,8 +43,14 @@ pub enum CoderSpec {
     Ppmd { level: u32, order: Option<u32> },
     /// Delta filter. `-m0=delta`
     Delta { distance: u32 },
+    /// Deflate64. `-m0=deflate64`
+    Deflate64,
     /// BCJ x86 filter. `-m0=bcj`
     Bcj,
+    /// BCJ2 4-stream filter paired with LZMA. `-m0=BCJ2 -m1=LZMA`
+    Bcj2,
+    /// AES-256 encryption with optional password. `-p<password>`
+    Aes { password: String },
 }
 
 impl CoderSpec {
@@ -57,9 +63,13 @@ impl CoderSpec {
                 dict_size: Some(d),
             } => format!("lzma:d={d}"),
             CoderSpec::Lzma { .. } => "lzma".to_string(),
-            CoderSpec::Lzma2 { level: _ } => "lzma2".to_string(),
+            CoderSpec::Lzma2 {
+                dict_size: Some(d), ..
+            } => format!("lzma2:d={d}"),
+            CoderSpec::Lzma2 { .. } => "lzma2".to_string(),
             CoderSpec::Bzip2 { level: _ } => "bzip2".to_string(),
             CoderSpec::Deflate { level: _ } => "deflate".to_string(),
+            CoderSpec::Deflate64 => "deflate64".to_string(),
             CoderSpec::Ppmd {
                 level: _,
                 order: Some(o),
@@ -67,6 +77,11 @@ impl CoderSpec {
             CoderSpec::Ppmd { .. } => "ppmd".to_string(),
             CoderSpec::Delta { distance } => format!("delta:{distance}"),
             CoderSpec::Bcj => "bcj".to_string(),
+            // BCJ2 is special: it uses two -m arguments (BCJ2 + LZMA).
+            // m_arg() returns only the first; seven_zip_compress handles the extra arg.
+            CoderSpec::Bcj2 => "BCJ2".to_string(),
+            // AES: password is passed separately; m_arg is not used for this coder.
+            CoderSpec::Aes { .. } => "lzma2".to_string(),
         }
     }
 
@@ -75,12 +90,15 @@ impl CoderSpec {
         match self {
             CoderSpec::Copy => 0,
             CoderSpec::Lzma { level, .. } => *level,
-            CoderSpec::Lzma2 { level } => *level,
+            CoderSpec::Lzma2 { level, .. } => *level,
             CoderSpec::Bzip2 { level } => *level,
             CoderSpec::Deflate { level } => *level,
+            CoderSpec::Deflate64 => 5,
             CoderSpec::Ppmd { level, .. } => *level,
             CoderSpec::Delta { .. } => 0,
             CoderSpec::Bcj => 0,
+            CoderSpec::Bcj2 => 5,
+            CoderSpec::Aes { .. } => 5,
         }
     }
 }
@@ -169,11 +187,20 @@ pub fn seven_zip_compress(input: &[u8], spec: &CoderSpec) -> Vec<u8> {
     let mx = format!("-mx={}", spec.mx_arg());
     let m0 = format!("-m0={}", spec.m_arg());
 
-    let output = Command::new(&sevenzip)
-        .arg("a")
-        .arg("-t7z")
-        .arg(&m0)
-        .arg(&mx)
+    let mut cmd = Command::new(&sevenzip);
+    cmd.arg("a").arg("-t7z").arg(&m0).arg(&mx);
+
+    // BCJ2 requires a second method argument: -m1=LZMA (inner compressor).
+    if matches!(spec, CoderSpec::Bcj2) {
+        cmd.arg("-m1=LZMA");
+    }
+
+    // AES requires a password flag.
+    if let CoderSpec::Aes { password } = spec {
+        cmd.arg(format!("-p{password}"));
+    }
+
+    let output = cmd
         .arg(&archive_path)
         .arg(&payload_path)
         .stdout(Stdio::piped())

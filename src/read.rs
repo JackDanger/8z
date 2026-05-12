@@ -114,11 +114,43 @@ impl<'a> ArchiveReader<'a> {
 
         let folder = &ms.folders[idx];
 
-        // Locate the packed bytes for this folder.
-        // The packed-stream geometry comes from the PackedStreams (PackInfo).
-        let packed_slice = self.packed_slice_for_folder(idx, ms)?;
+        // Locate the packed bytes for this folder (one slice per packed stream).
+        let packed_slices = self.packed_slices_for_folder(folder, ms)?;
+        let packed_refs: Vec<&[u8]> = packed_slices.iter().map(|s| s.as_slice()).collect();
 
-        pipeline::decode_folder(folder, packed_slice)
+        pipeline::decode_folder(folder, &packed_refs)
+    }
+
+    /// Extract file `idx` from an AES-encrypted archive using the given password.
+    ///
+    /// For non-encrypted folders, this is identical to [`extract`](Self::extract).
+    /// For AES folders, the password is used to derive the decryption key.
+    #[cfg(feature = "aes")]
+    pub fn extract_with_password(&self, idx: usize, password: &str) -> SevenZippyResult<Vec<u8>> {
+        let file_count = self.archive.file_count();
+        if idx >= file_count {
+            return Err(SevenZippyError::invalid_argument(format!(
+                "file index {idx} out of range (archive has {file_count} files)"
+            )));
+        }
+
+        let ms =
+            self.archive.header.main_streams.as_ref().ok_or_else(|| {
+                SevenZippyError::invalid_header("archive has no main-streams info")
+            })?;
+
+        if idx >= ms.folders.len() {
+            return Err(SevenZippyError::invalid_header(format!(
+                "file {idx} has no corresponding folder (only {} folders)",
+                ms.folders.len()
+            )));
+        }
+
+        let folder = &ms.folders[idx];
+        let packed_slices = self.packed_slices_for_folder(folder, ms)?;
+        let packed_refs: Vec<&[u8]> = packed_slices.iter().map(|s| s.as_slice()).collect();
+
+        pipeline::decode_folder_with_password(folder, &packed_refs, password)
     }
 
     /// Extract all files, returning `(name, bytes)` pairs.
@@ -134,27 +166,25 @@ impl<'a> ArchiveReader<'a> {
 
     // ── Internal helpers ──────────────────────────────────────────────────────
 
-    /// Return the packed-data slice for folder `folder_idx`.
+    /// Return the packed-data slices for a folder, one per unbound input stream.
     ///
-    /// Phase C assumption: each folder corresponds to exactly one packed stream,
-    /// and folders are laid out sequentially in the packed-data region starting
-    /// at `pack_pos` (usually 0).
-    fn packed_slice_for_folder<'b>(
+    /// For a single-coder folder with one packed stream, returns a `Vec` with one
+    /// element. For a BCJ2 folder with four packed streams, returns four elements.
+    ///
+    /// The mapping uses `folder.packed_stream_indices` (absolute packed-stream
+    /// indices) to look up sizes from `pack_sizes` and offsets from `pack_pos`.
+    fn packed_slices_for_folder(
         &self,
-        folder_idx: usize,
-        ms: &'b container::UnpackedStreams,
-    ) -> SevenZippyResult<&'b [u8]>
-    where
-        'a: 'b,
-    {
-        // The packed streams geometry comes from header.packed_streams (PackInfo).
-        // Build an offset table: for folder i, packed bytes start at
-        //   pack_pos + sum(pack_sizes[0..i])
-        // and are pack_sizes[i] bytes long.
+        folder: &container::Folder,
+        ms: &container::UnpackedStreams,
+    ) -> SevenZippyResult<Vec<Vec<u8>>> {
+        // Build the global packed-stream offset table.
         let (pack_pos, pack_sizes) = if let Some(ps) = self.archive.header.packed_streams.as_ref() {
             (ps.pack_pos as usize, ps.pack_sizes.clone())
         } else {
-            // Fall back: derive from folder unpack sizes (valid for Copy-only archives)
+            // Fall back: derive from folder unpack sizes (valid for Copy-only archives).
+            // In this case there is exactly one packed stream per folder, and
+            // packed_stream_indices is [0].
             let sizes: Vec<u64> = ms
                 .folders
                 .iter()
@@ -163,36 +193,49 @@ impl<'a> ArchiveReader<'a> {
             (0usize, sizes)
         };
 
-        if folder_idx >= pack_sizes.len() {
-            return Err(SevenZippyError::invalid_header(format!(
-                "folder {folder_idx} has no pack-size entry (only {} entries)",
-                pack_sizes.len()
-            )));
+        // Build cumulative byte offsets into packed_data for each global packed stream.
+        // offsets[i] = byte offset within packed_data where stream i starts.
+        // pack_pos is the offset of the first stream within packed_data.
+        let stream_count = pack_sizes.len();
+        let mut stream_starts = Vec::with_capacity(stream_count);
+        let mut running = pack_pos;
+        for &sz in &pack_sizes {
+            stream_starts.push(running);
+            running += sz as usize;
         }
 
-        let offset: usize = pack_pos
-            + pack_sizes[..folder_idx]
-                .iter()
-                .map(|&s| s as usize)
-                .sum::<usize>();
-        let size = pack_sizes[folder_idx] as usize;
-
-        if offset + size > self.archive.packed_data.len() {
-            return Err(SevenZippyError::truncated(format!(
-                "folder {folder_idx} packed data [{offset}..{}] out of range (packed_data len={})",
-                offset + size,
-                self.archive.packed_data.len()
-            )));
-        }
-
-        // SAFETY: we just bounds-checked. The slice is from the archive's
-        // owned Vec<u8>. We need to extend the lifetime to 'b here, which is
-        // sound because 'a: 'b and both &self and ms are borrowed from 'a.
-        //
-        // Actually, self.archive.packed_data lives for 'a, and 'a: 'b, so
-        // returning a &'b slice from a &'a Vec<u8> is fine.
         let full = self.archive.packed_data.as_slice();
-        Ok(&full[offset..offset + size])
+        let mut result = Vec::with_capacity(folder.packed_stream_indices.len());
+
+        // Determine the base stream index for this folder by counting how many
+        // packed streams are consumed by all prior folders.
+        let base_stream_idx: usize = ms
+            .folders
+            .iter()
+            .take_while(|f| !std::ptr::eq(*f, folder))
+            .map(|f| f.packed_stream_indices.len())
+            .sum();
+
+        for local_idx in 0..folder.packed_stream_indices.len() {
+            let abs_idx = base_stream_idx + local_idx;
+            if abs_idx >= stream_count {
+                return Err(SevenZippyError::invalid_header(format!(
+                    "packed stream index {abs_idx} out of range (only {stream_count} streams)"
+                )));
+            }
+            let data_start = stream_starts[abs_idx];
+            let data_end = data_start + pack_sizes[abs_idx] as usize;
+            if data_end > full.len() {
+                return Err(SevenZippyError::truncated(format!(
+                    "packed stream {abs_idx} [{data_start}..{data_end}] out of range \
+                     (packed_data len={})",
+                    full.len()
+                )));
+            }
+            result.push(full[data_start..data_end].to_vec());
+        }
+
+        Ok(result)
     }
 }
 

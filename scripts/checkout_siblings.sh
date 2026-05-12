@@ -10,8 +10,11 @@ set -euo pipefail
 
 SIBLINGS=(
   lazippy
+  lazippier
   bzippy2
   pippyzippy
+  jumpzippier
+  lockzippy
 )
 
 REPO_ORG="${SIBLING_ORG:-JackDanger}"
