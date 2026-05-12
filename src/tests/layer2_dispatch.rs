@@ -126,9 +126,36 @@ fn deflate64_is_missing() {
     assert_missing_coder(&MethodId::deflate64(), "Deflate64");
 }
 
+/// When built with `--features ppmd` (the default), dispatch returns a live
+/// `PpmdCoder`. When built without, returns `MissingCoder`.
 #[test]
-fn ppmd_is_missing() {
-    assert_missing_coder(&MethodId::ppmd(), "PPMd");
+fn ppmd_dispatches_or_is_missing() {
+    use crate::container::Coder as CoderMeta;
+    // Supply valid 5-byte PPMd7 properties (order=6, mem_size=16MiB) so
+    // PpmdCoder::from_props doesn't fail with a length error.
+    let props = {
+        let order: u8 = 6;
+        let mem_size: u32 = 16 * 1024 * 1024;
+        let mut v = vec![order];
+        v.extend_from_slice(&mem_size.to_le_bytes());
+        v
+    };
+    let meta = CoderMeta {
+        method_id: MethodId::ppmd(),
+        num_in_streams: 1,
+        num_out_streams: 1,
+        properties: props,
+    };
+    let result = crate::pipeline::coder_for(&meta);
+    #[cfg(feature = "ppmd")]
+    {
+        let coder = result.expect("PPMd coder must be available when ppmd feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::ppmd());
+    }
+    #[cfg(not(feature = "ppmd"))]
+    {
+        assert!(matches!(result, Err(SevenZippyError::MissingCoder { .. })));
+    }
 }
 
 #[test]
@@ -136,9 +163,20 @@ fn bcj_is_missing() {
     assert_missing_coder(&MethodId::bcj(), "BCJ");
 }
 
+/// When built with `--features delta` (the default), dispatch returns a live
+/// `DeltaCoder`. When built without, returns `MissingCoder`.
 #[test]
-fn delta_is_missing() {
-    assert_missing_coder(&MethodId::delta(), "Delta");
+fn delta_dispatches_or_is_missing() {
+    let result = coder_for(&MethodId::delta());
+    #[cfg(feature = "delta")]
+    {
+        let coder = result.expect("Delta coder must be available when delta feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::delta());
+    }
+    #[cfg(not(feature = "delta"))]
+    {
+        assert!(matches!(result, Err(SevenZippyError::MissingCoder { .. })));
+    }
 }
 
 // ── Completely unknown method ID: UnsupportedMethod ──────────────────────────

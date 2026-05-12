@@ -78,6 +78,43 @@ fn lazippy_lib_tests_pass() {
     );
 }
 
+/// Verify that `pippyzippy`'s own lib tests pass from 7zippy's perspective.
+#[test]
+fn pippyzippy_lib_tests_pass() {
+    let cargo = match find_cargo() {
+        Some(c) => c,
+        None => {
+            eprintln!("[skip] cargo not found — per-coder smoke test skipped");
+            return;
+        }
+    };
+
+    let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let pippyzippy_path = workspace_root.join("../pippyzippy");
+    if !pippyzippy_path.exists() {
+        eprintln!(
+            "[skip] pippyzippy not found at {} — per-coder smoke test skipped",
+            pippyzippy_path.display()
+        );
+        return;
+    }
+
+    let output = std::process::Command::new(&cargo)
+        .arg("test")
+        .arg("--lib")
+        .arg("--manifest-path")
+        .arg(pippyzippy_path.join("Cargo.toml"))
+        .output()
+        .expect("failed to spawn cargo test for pippyzippy");
+
+    assert!(
+        output.status.success(),
+        "pippyzippy lib tests failed:\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+}
+
 // ── Ignored stubs: sibling crates not yet created ────────────────────────────
 
 #[test]
@@ -85,12 +122,6 @@ fn lazippy_lib_tests_pass() {
 fn lazippier_lib_tests_pass() {
     // Identical pattern to lazippy_lib_tests_pass.
     todo!("add lazippier smoke test once the repo exists")
-}
-
-#[test]
-#[ignore = "pippyzippy repo not yet created; un-ignore when JackDanger/pippyzippy lands"]
-fn pippyzippy_lib_tests_pass() {
-    todo!()
 }
 
 #[test]
