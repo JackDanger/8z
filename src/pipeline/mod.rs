@@ -10,6 +10,8 @@ mod coder_trait;
 mod copy;
 #[cfg(feature = "deflate")]
 pub mod deflate;
+#[cfg(feature = "delta")]
+pub mod delta;
 mod dispatch;
 #[cfg(feature = "lzma")]
 pub mod lzma;

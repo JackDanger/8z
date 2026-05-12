@@ -45,10 +45,11 @@ tempfile = "3"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
-default = ["lzma", "deflate", "bzip2"]
+default = ["lzma", "deflate", "bzip2", "delta"]
 lzma    = ["dep:lazippy"]
 deflate = ["dep:flate2"]
 bzip2   = ["dep:bzippy2"]
+delta   = []  # in-tree implementation; no sub-crate dependency
 # lzma2   = ["dep:lazippier", "lzma"]
 # ppmd    = ["dep:pippyzippy"]
 # bcj     = ["dep:jumpzippy"]

@@ -136,9 +136,20 @@ fn bcj_is_missing() {
     assert_missing_coder(&MethodId::bcj(), "BCJ");
 }
 
+/// When built with `--features delta` (the default), dispatch returns a live
+/// `DeltaCoder`. When built without, returns `MissingCoder`.
 #[test]
-fn delta_is_missing() {
-    assert_missing_coder(&MethodId::delta(), "Delta");
+fn delta_dispatches_or_is_missing() {
+    let result = coder_for(&MethodId::delta());
+    #[cfg(feature = "delta")]
+    {
+        let coder = result.expect("Delta coder must be available when delta feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::delta());
+    }
+    #[cfg(not(feature = "delta"))]
+    {
+        assert!(matches!(result, Err(SevenZippyError::MissingCoder { .. })));
+    }
 }
 
 // ── Completely unknown method ID: UnsupportedMethod ──────────────────────────
