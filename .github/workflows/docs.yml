@@ -13,19 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Checkout lazippy sibling
-        uses: actions/checkout@v4
-        with:
-          repository: JackDanger/lazippy
-          path: lazippy-sibling
-
-      - name: Move lazippy into sibling location
-        run: |
-          # actions/checkout cannot check out into a parent directory, so we land
-          # it under the workspace and then move it.
-          mkdir -p ../lazippy
-          cp -r lazippy-sibling/. ../lazippy/
-          rm -rf ../lazippy/.git lazippy-sibling
+      - name: Checkout sibling crates
+        run: bash scripts/checkout_siblings.sh
 
       - uses: dtolnay/rust-toolchain@stable
 

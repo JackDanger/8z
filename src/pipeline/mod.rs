@@ -4,11 +4,19 @@
 //! and the codec implementations (in-tree Copy + sibling crates). `dispatch.rs` is
 //! the single place where each codec plugs in.
 
+#[cfg(feature = "bzip2")]
+pub mod bzip2;
 mod coder_trait;
 mod copy;
+#[cfg(feature = "deflate")]
+pub mod deflate;
+#[cfg(feature = "delta")]
+pub mod delta;
 mod dispatch;
 #[cfg(feature = "lzma")]
 pub mod lzma;
+#[cfg(feature = "ppmd")]
+pub mod ppmd;
 
 pub use coder_trait::Coder;
 pub use copy::CopyCoder;

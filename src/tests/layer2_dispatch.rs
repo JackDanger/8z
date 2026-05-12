@@ -82,14 +82,43 @@ fn lzma2_is_missing() {
     assert_missing_coder(&MethodId::lzma2(), "LZMA2");
 }
 
+/// BZip2 dispatches to Bzip2Coder when the `bzip2` feature is enabled,
+/// or returns MissingCoder when the feature is disabled.
 #[test]
-fn bzip2_is_missing() {
-    assert_missing_coder(&MethodId::bzip2(), "BZip2");
+fn bzip2_dispatches_or_is_missing() {
+    let result = coder_for(&MethodId::bzip2());
+    #[cfg(feature = "bzip2")]
+    {
+        let coder = result.expect("BZip2 coder must be available when bzip2 feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::bzip2());
+    }
+    #[cfg(not(feature = "bzip2"))]
+    {
+        assert!(
+            matches!(result, Err(SevenZippyError::MissingCoder { .. })),
+            "expected MissingCoder when bzip2 feature is disabled, got {result:?}"
+        );
+    }
 }
 
+/// Deflate dispatches to DeflateCoder when the `deflate` feature is enabled,
+/// or returns MissingCoder when the feature is disabled.
 #[test]
-fn deflate_is_missing() {
-    assert_missing_coder(&MethodId::deflate(), "Deflate");
+fn deflate_dispatches_or_is_missing() {
+    let result = coder_for(&MethodId::deflate());
+    #[cfg(feature = "deflate")]
+    {
+        let coder =
+            result.expect("Deflate coder must be available when deflate feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::deflate());
+    }
+    #[cfg(not(feature = "deflate"))]
+    {
+        assert!(
+            matches!(result, Err(SevenZippyError::MissingCoder { .. })),
+            "expected MissingCoder when deflate feature is disabled, got {result:?}"
+        );
+    }
 }
 
 #[test]
@@ -97,9 +126,36 @@ fn deflate64_is_missing() {
     assert_missing_coder(&MethodId::deflate64(), "Deflate64");
 }
 
+/// When built with `--features ppmd` (the default), dispatch returns a live
+/// `PpmdCoder`. When built without, returns `MissingCoder`.
 #[test]
-fn ppmd_is_missing() {
-    assert_missing_coder(&MethodId::ppmd(), "PPMd");
+fn ppmd_dispatches_or_is_missing() {
+    use crate::container::Coder as CoderMeta;
+    // Supply valid 5-byte PPMd7 properties (order=6, mem_size=16MiB) so
+    // PpmdCoder::from_props doesn't fail with a length error.
+    let props = {
+        let order: u8 = 6;
+        let mem_size: u32 = 16 * 1024 * 1024;
+        let mut v = vec![order];
+        v.extend_from_slice(&mem_size.to_le_bytes());
+        v
+    };
+    let meta = CoderMeta {
+        method_id: MethodId::ppmd(),
+        num_in_streams: 1,
+        num_out_streams: 1,
+        properties: props,
+    };
+    let result = crate::pipeline::coder_for(&meta);
+    #[cfg(feature = "ppmd")]
+    {
+        let coder = result.expect("PPMd coder must be available when ppmd feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::ppmd());
+    }
+    #[cfg(not(feature = "ppmd"))]
+    {
+        assert!(matches!(result, Err(SevenZippyError::MissingCoder { .. })));
+    }
 }
 
 #[test]
@@ -107,9 +163,20 @@ fn bcj_is_missing() {
     assert_missing_coder(&MethodId::bcj(), "BCJ");
 }
 
+/// When built with `--features delta` (the default), dispatch returns a live
+/// `DeltaCoder`. When built without, returns `MissingCoder`.
 #[test]
-fn delta_is_missing() {
-    assert_missing_coder(&MethodId::delta(), "Delta");
+fn delta_dispatches_or_is_missing() {
+    let result = coder_for(&MethodId::delta());
+    #[cfg(feature = "delta")]
+    {
+        let coder = result.expect("Delta coder must be available when delta feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::delta());
+    }
+    #[cfg(not(feature = "delta"))]
+    {
+        assert!(matches!(result, Err(SevenZippyError::MissingCoder { .. })));
+    }
 }
 
 // ── Completely unknown method ID: UnsupportedMethod ──────────────────────────

@@ -39,14 +39,66 @@ pub fn coder_for(coder_meta: &CoderMeta) -> SevenZippyResult<Box<dyn Coder>> {
             }
         }
 
+        // ── Deflate — feature-gated ─────────────────────────────────────────
+        [0x04, 0x01, 0x08] => {
+            #[cfg(feature = "deflate")]
+            {
+                use crate::pipeline::deflate::DeflateCoder;
+                Ok(Box::new(DeflateCoder))
+            }
+            #[cfg(not(feature = "deflate"))]
+            {
+                Err(SevenZippyError::missing_coder("Deflate"))
+            }
+        }
+
+        // ── Deflate64: same raw deflate but with 64 KiB window; flate2 does not
+        //    support this variant — leave as MissingCoder until gzippy ships it.
+        [0x04, 0x01, 0x09] => Err(SevenZippyError::missing_coder("Deflate64")),
+
+        // ── BZip2 — feature-gated ───────────────────────────────────────────
+        [0x04, 0x02, 0x02] => {
+            #[cfg(feature = "bzip2")]
+            {
+                use crate::pipeline::bzip2::Bzip2Coder;
+                Ok(Box::new(Bzip2Coder))
+            }
+            #[cfg(not(feature = "bzip2"))]
+            {
+                Err(SevenZippyError::missing_coder("BZip2"))
+            }
+        }
+
+        // ── Delta filter — feature-gated ────────────────────────────────────
+        [0x03] => {
+            #[cfg(feature = "delta")]
+            {
+                use crate::pipeline::delta::DeltaCoder;
+                DeltaCoder::from_props(&coder_meta.properties)
+                    .map(|c| Box::new(c) as Box<dyn Coder>)
+            }
+            #[cfg(not(feature = "delta"))]
+            {
+                Err(SevenZippyError::missing_coder("Delta"))
+            }
+        }
+
+        // ── PPMd — feature-gated ────────────────────────────────────────────
+        [0x03, 0x04, 0x01] => {
+            #[cfg(feature = "ppmd")]
+            {
+                use crate::pipeline::ppmd::PpmdCoder;
+                PpmdCoder::from_props(&coder_meta.properties).map(|c| Box::new(c) as Box<dyn Coder>)
+            }
+            #[cfg(not(feature = "ppmd"))]
+            {
+                Err(SevenZippyError::missing_coder("PPMd"))
+            }
+        }
+
         // ── codec stubs — feature-gated ─────────────────────────────────────
         [0x21] => Err(SevenZippyError::missing_coder("LZMA2")),
-        [0x04, 0x01, 0x08] => Err(SevenZippyError::missing_coder("Deflate")),
-        [0x04, 0x01, 0x09] => Err(SevenZippyError::missing_coder("Deflate64")),
-        [0x04, 0x02, 0x02] => Err(SevenZippyError::missing_coder("BZip2")),
-        [0x03, 0x04, 0x01] => Err(SevenZippyError::missing_coder("PPMd")),
         [0x03, 0x03, ..] => Err(SevenZippyError::missing_coder("BCJ family")),
-        [0x03] => Err(SevenZippyError::missing_coder("Delta")),
         [0x06, 0xF1, 0x07, 0x01] => Err(SevenZippyError::missing_coder("AES+SHA-256")),
 
         _ => Err(SevenZippyError::unsupported_method(

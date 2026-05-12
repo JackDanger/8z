@@ -1,6 +1,6 @@
 # 7zippy STATUS
 
-**Current focus:** Phase 1 codec parity via wrappers. LZMA ✅. Next: Deflate (flate2), BZip2 (bzippy2).
+**Current focus:** Phase 1 codec parity via wrappers. LZMA ✅, Deflate ✅, BZip2 ✅, Delta ✅, PPMd ✅. Next: BCJ family (jumpzippy).
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|
@@ -8,9 +8,9 @@
 | Copy | 7zippy (in-tree) | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜ |
 | LZMA | lazippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | LZMA2 | lazippier | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| PPMd | pippyzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| BZip2 | bzippy2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| Deflate | gzippy | ⬜ (blocked on gzippy lib PR) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| PPMd | pippyzippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
+| BZip2 | bzippy2 | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
+| Deflate | flate2 (Phase 1) | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | Deflate64 | gzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BCJ (x86) | jumpzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BCJ (ARM) | jumpzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
@@ -19,7 +19,7 @@
 | BCJ (IA64) | jumpzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BCJ (SPARC) | jumpzippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BCJ2 | jumpzippier | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
-| Delta | deltazippy | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Delta | 7zippy (in-tree) | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ |
 | AES + SHA-256 | lockzippy | ⬜ | ⬜ | n/a | ⬜ | ⬜ | ⬜ |
 
 **Symbols**: ⬜ not started, 🟡 in progress, ✅ done, ❌ blocked

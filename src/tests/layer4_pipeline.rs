@@ -138,20 +138,106 @@ fn round_trip_lzma2_64k() {
     todo!()
 }
 
+/// Round-trip 64 KiB of seeded random bytes through the BZip2 pipeline.
+#[cfg(feature = "bzip2")]
 #[test]
-#[ignore = "BZip2 not yet implemented; un-ignore when bzippy2 is wired in dispatch.rs"]
 fn round_trip_bzip2_64k() {
-    todo!()
+    use crate::pipeline::bzip2::Bzip2Coder;
+    let input = fixtures::random(0xB21_B21B, 65_536);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("payload.bin", input.clone(), Box::new(Bzip2Coder));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    assert_eq!(archive.file_count(), 1);
+
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
 }
 
+/// Round-trip 64 KiB of seeded random bytes through the Deflate pipeline.
+#[cfg(feature = "deflate")]
 #[test]
-#[ignore = "Deflate not yet implemented; un-ignore when gzippy lib API is wired in dispatch.rs"]
 fn round_trip_deflate_64k() {
-    todo!()
+    use crate::pipeline::deflate::DeflateCoder;
+    let input = fixtures::random(0x0DEF_1A7E, 65_536);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("payload.bin", input.clone(), Box::new(DeflateCoder));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    assert_eq!(archive.file_count(), 1);
+
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
 }
 
+/// Round-trip 64 KiB of seeded random bytes through the Delta filter pipeline.
+#[cfg(feature = "delta")]
 #[test]
-#[ignore = "PPMd not yet implemented; un-ignore when pippyzippy is wired in dispatch.rs"]
+fn round_trip_delta_64k() {
+    use crate::pipeline::delta::DeltaCoder;
+    let input = fixtures::random(0xDE17_A0BE, 65_536);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("payload.bin", input.clone(), Box::new(DeltaCoder::new(1)));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    assert_eq!(archive.file_count(), 1);
+
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+/// Verify Delta with distance 4 round-trips correctly.
+#[cfg(feature = "delta")]
+#[test]
+fn round_trip_delta_distance_4() {
+    use crate::pipeline::delta::DeltaCoder;
+    let input = fixtures::sequential(4096);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("seq.bin", input.clone(), Box::new(DeltaCoder::new(4)));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+/// Round-trip 64 KiB of seeded random bytes through the PPMd pipeline.
+#[cfg(feature = "ppmd")]
+#[test]
 fn round_trip_ppmd_64k() {
-    todo!()
+    use crate::pipeline::ppmd::PpmdCoder;
+    let input = fixtures::random(0xFEED_F00D, 65_536);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("payload.bin", input.clone(), Box::new(PpmdCoder::new()));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    assert_eq!(archive.file_count(), 1);
+
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+/// Verify PPMd compresses 64 KiB of zeros to significantly less than the input.
+#[cfg(feature = "ppmd")]
+#[test]
+fn round_trip_ppmd_zeros_compresses_well() {
+    use crate::pipeline::ppmd::PpmdCoder;
+    let input = fixtures::zeros(64 * 1024);
+    let mut b = ArchiveBuilder::new();
+    b.add_file("zeros.bin", input.clone(), Box::new(PpmdCoder::new()));
+    let archive_bytes = b.build().unwrap();
+
+    let archive = Archive::parse(&archive_bytes).unwrap();
+    let extracted = archive.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+
+    assert!(
+        archive_bytes.len() < input.len() / 10,
+        "PPMd should compress 64KiB of zeros heavily; archive is {} bytes",
+        archive_bytes.len()
+    );
 }
