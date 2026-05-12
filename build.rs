@@ -42,6 +42,6 @@ fn install_hook(src: &str, dst: &str) {
             std::fs::set_permissions(dst, std::fs::Permissions::from_mode(0o755))
                 .unwrap_or_else(|_| panic!("chmod +x {}", dst.display()));
         }
-        eprintln!("Installed git hook: {}", dst);
+        eprintln!("Installed git hook: {}", dst.display());
     }
 }
