@@ -34,11 +34,10 @@ bzippy2    = { version = "0.0.1", path = "../bzippy2",    optional = true }
 # sub-crate is needed for Phase 1.
 lzma-rust2  = { version = "0.16", features = ["encoder"], optional = true }
 lazippier   = { version = "0.0.1", path = "../lazippier",   optional = true }
-# gzippy 0.5 does not yet expose raw-deflate primitives (its public API only
-# produces gzip-framed output); using flate2 directly for Phase 1 Deflate
-# support until upstream adds a raw-deflate API.
-# See: https://github.com/JackDanger/gzippy/issues/91
-flate2      = { version = "1",                              optional = true }
+# gzippy 0.6 exposes deflate_encode/deflate_decode (raw DEFLATE, no gzip wrapper).
+# Uses path dep until 0.6.0 is published to crates.io; swap to version = "0.6" after.
+# See: https://github.com/JackDanger/gzippy/pull/92
+gzippy      = { version = "0.6", path = "../gzippy",        optional = true }
 # Deflate64: 64 KiB sliding-window variant of Deflate (decode-only).
 # No good Rust encoder exists; Phase 1 ships decode only.
 deflate64   = { version = "0.1",                            optional = true }
@@ -52,7 +51,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 [features]
 default = ["lzma", "lzma2", "deflate", "deflate64", "bzip2", "delta", "ppmd", "bcj", "bcj2", "aes"]
 lzma      = ["dep:lazippy"]
-deflate   = ["dep:flate2"]
+deflate   = ["dep:gzippy"]
 deflate64 = ["dep:deflate64"]  # in-tree; decode-only (no Rust encoder exists for Phase 1)
 bzip2     = ["dep:bzippy2"]
 delta     = []  # in-tree implementation; no sub-crate dependency

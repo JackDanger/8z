@@ -1,6 +1,6 @@
 # 7zippy STATUS
 
-**Current focus:** Phase 1 codec parity complete. LZMA ✅, Deflate ✅, BZip2 ✅, Delta ✅, PPMd ✅, BCJ family ✅, Deflate64 ✅ (decode), LZMA2 ✅, BCJ2 ✅ (decode), AES-256 ✅ (decode). Phase 1 done.
+**Current focus:** Wave B work in progress. Deflate now routes through gzippy 0.6 (Phase-2-quality backend). BCJ/Delta sub-crate extraction and AES encrypt path in progress.
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|
@@ -10,7 +10,7 @@
 | LZMA2 | lazippier | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | PPMd | pippyzippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | BZip2 | bzippy2 | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
-| Deflate | flate2 (Phase 1) | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
+| Deflate | gzippy 0.6 (Phase 2 quality) | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | Deflate64 | deflate64 crate (in-tree) | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ |
 | BCJ (x86) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | BCJ (ARM) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
