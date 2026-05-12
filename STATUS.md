@@ -1,6 +1,6 @@
 # 7zippy STATUS
 
-**Current focus:** Phase 1 codec parity via wrappers. LZMA ✅, Deflate ✅, BZip2 ✅, Delta ✅, PPMd ✅, BCJ family ✅, Deflate64 ✅ (decode), LZMA2 ✅, BCJ2 ✅ (decode). Next: AES.
+**Current focus:** Phase 1 codec parity complete. LZMA ✅, Deflate ✅, BZip2 ✅, Delta ✅, PPMd ✅, BCJ family ✅, Deflate64 ✅ (decode), LZMA2 ✅, BCJ2 ✅ (decode), AES-256 ✅ (decode). Phase 1 done.
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|
@@ -20,7 +20,7 @@
 | BCJ (SPARC) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BCJ2 | jumpzippier | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ |
 | Delta | 7zippy (in-tree) | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ |
-| AES + SHA-256 | lockzippy | ⬜ | ⬜ | n/a | ⬜ | ⬜ | ⬜ |
+| AES + SHA-256 | lockzippy | ✅ | ⬜ | n/a | ✅ | ⬜ | ⬜ |
 
 **Symbols**: ⬜ not started, 🟡 in progress, ✅ done, ❌ blocked
 

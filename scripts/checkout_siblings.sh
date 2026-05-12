@@ -14,6 +14,7 @@ SIBLINGS=(
   bzippy2
   pippyzippy
   jumpzippier
+  lockzippy
 )
 
 REPO_ORG="${SIBLING_ORG:-JackDanger}"

@@ -43,14 +43,14 @@ flate2      = { version = "1",                              optional = true }
 # No good Rust encoder exists; Phase 1 ships decode only.
 deflate64   = { version = "0.1",                            optional = true }
 jumpzippier = { version = "0.0.1", path = "../jumpzippier", optional = true }
-# lockzippy   = { version = "0.0.1", path = "../lockzippy",   optional = true }
+lockzippy   = { version = "0.0.1", path = "../lockzippy",   optional = true }
 
 [dev-dependencies]
 tempfile = "3"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
-default = ["lzma", "lzma2", "deflate", "deflate64", "bzip2", "delta", "ppmd", "bcj", "bcj2"]
+default = ["lzma", "lzma2", "deflate", "deflate64", "bzip2", "delta", "ppmd", "bcj", "bcj2", "aes"]
 lzma      = ["dep:lazippy"]
 deflate   = ["dep:flate2"]
 deflate64 = ["dep:deflate64"]  # in-tree; decode-only (no Rust encoder exists for Phase 1)
@@ -60,7 +60,7 @@ ppmd      = ["dep:pippyzippy"]
 bcj       = ["dep:lzma-rust2"]  # BCJ filters via lzma-rust2 filter module (Phase 1)
 lzma2     = ["dep:lazippier"]
 bcj2      = ["dep:jumpzippier", "lzma"]  # BCJ2 4-stream filter; requires LZMA for inner stream
-# crypto  = ["dep:lockzippy"]
+aes       = ["dep:lockzippy"]           # AES-256-CBC decryption (decode-only in Phase 1)
 
 [profile.release]
 lto           = "fat"

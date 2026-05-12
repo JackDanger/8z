@@ -4,6 +4,8 @@
 //! and the codec implementations (in-tree Copy + sibling crates). `dispatch.rs` is
 //! the single place where each codec plugs in.
 
+#[cfg(feature = "aes")]
+pub mod aes_folder;
 #[cfg(feature = "bcj")]
 pub mod bcj;
 #[cfg(feature = "bcj2")]
@@ -41,7 +43,18 @@ use crate::error::{SevenZippyError, SevenZippyResult};
 /// unbound input stream (as determined by `folder.packed_stream_indices`).
 /// For single-coder folders, exactly one slice is expected. For BCJ2 folders,
 /// exactly four slices are expected.
+///
+/// For AES-encrypted folders, use [`decode_folder_with_password`] instead;
+/// this function returns `SevenZippyError::EncryptedContent` for such folders.
 pub fn decode_folder(folder: &Folder, packed_streams: &[&[u8]]) -> SevenZippyResult<Vec<u8>> {
+    // ── AES-encrypted folder ─────────────────────────────────────────────────
+    #[cfg(feature = "aes")]
+    if aes_folder::has_aes_coder(folder) {
+        return Err(SevenZippyError::encrypted_content(
+            "archive is AES-encrypted; use extract_with_password() and supply a password",
+        ));
+    }
+
     // ── BCJ2 multi-coder folder ──────────────────────────────────────────────
     #[cfg(feature = "bcj2")]
     if bcj2_folder::is_bcj2_lzma_folder(folder) {
@@ -63,6 +76,23 @@ pub fn decode_folder(folder: &Folder, packed_streams: &[&[u8]]) -> SevenZippyRes
         .copied()
         .unwrap_or(packed.len() as u64);
     coder.decode(packed, unpack_size)
+}
+
+/// Decode an AES-encrypted folder using the supplied password.
+///
+/// For non-AES folders, delegates to [`decode_folder`].
+#[cfg(feature = "aes")]
+pub fn decode_folder_with_password(
+    folder: &Folder,
+    packed_streams: &[&[u8]],
+    password: &str,
+) -> SevenZippyResult<Vec<u8>> {
+    if aes_folder::has_aes_coder(folder) {
+        let packed = packed_streams.first().copied().unwrap_or(&[]);
+        aes_folder::decode_aes_folder(folder, packed, password)
+    } else {
+        decode_folder(folder, packed_streams)
+    }
 }
 
 /// Encode a single byte slice into a single-coder folder using `coder`.

@@ -46,6 +46,10 @@ pub enum SevenZippyError {
     /// Functionality that is planned but not yet implemented.
     #[error("not yet implemented: {0}")]
     NotYetImplemented(&'static str),
+
+    /// The archive or folder is AES-encrypted and a password is required.
+    #[error("encrypted content: {0}")]
+    EncryptedContent(String),
 }
 
 impl SevenZippyError {
@@ -77,6 +81,11 @@ impl SevenZippyError {
     /// Construct a [`MissingCoder`](SevenZippyError::MissingCoder) error.
     pub fn missing_coder(name: &'static str) -> Self {
         SevenZippyError::MissingCoder { name }
+    }
+
+    /// Construct an [`EncryptedContent`](SevenZippyError::EncryptedContent) error.
+    pub fn encrypted_content<T: fmt::Display>(msg: T) -> Self {
+        SevenZippyError::EncryptedContent(msg.to_string())
     }
 
     /// Construct an [`UnsupportedMethod`](SevenZippyError::UnsupportedMethod) error.

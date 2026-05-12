@@ -49,6 +49,8 @@ pub enum CoderSpec {
     Bcj,
     /// BCJ2 4-stream filter paired with LZMA. `-m0=BCJ2 -m1=LZMA`
     Bcj2,
+    /// AES-256 encryption with optional password. `-p<password>`
+    Aes { password: String },
 }
 
 impl CoderSpec {
@@ -78,6 +80,8 @@ impl CoderSpec {
             // BCJ2 is special: it uses two -m arguments (BCJ2 + LZMA).
             // m_arg() returns only the first; seven_zip_compress handles the extra arg.
             CoderSpec::Bcj2 => "BCJ2".to_string(),
+            // AES: password is passed separately; m_arg is not used for this coder.
+            CoderSpec::Aes { .. } => "lzma2".to_string(),
         }
     }
 
@@ -94,6 +98,7 @@ impl CoderSpec {
             CoderSpec::Delta { .. } => 0,
             CoderSpec::Bcj => 0,
             CoderSpec::Bcj2 => 5,
+            CoderSpec::Aes { .. } => 5,
         }
     }
 }
@@ -188,6 +193,11 @@ pub fn seven_zip_compress(input: &[u8], spec: &CoderSpec) -> Vec<u8> {
     // BCJ2 requires a second method argument: -m1=LZMA (inner compressor).
     if matches!(spec, CoderSpec::Bcj2) {
         cmd.arg("-m1=LZMA");
+    }
+
+    // AES requires a password flag.
+    if let CoderSpec::Aes { password } = spec {
+        cmd.arg(format!("-p{password}"));
     }
 
     let output = cmd

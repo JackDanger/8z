@@ -121,6 +121,38 @@ impl<'a> ArchiveReader<'a> {
         pipeline::decode_folder(folder, &packed_refs)
     }
 
+    /// Extract file `idx` from an AES-encrypted archive using the given password.
+    ///
+    /// For non-encrypted folders, this is identical to [`extract`](Self::extract).
+    /// For AES folders, the password is used to derive the decryption key.
+    #[cfg(feature = "aes")]
+    pub fn extract_with_password(&self, idx: usize, password: &str) -> SevenZippyResult<Vec<u8>> {
+        let file_count = self.archive.file_count();
+        if idx >= file_count {
+            return Err(SevenZippyError::invalid_argument(format!(
+                "file index {idx} out of range (archive has {file_count} files)"
+            )));
+        }
+
+        let ms =
+            self.archive.header.main_streams.as_ref().ok_or_else(|| {
+                SevenZippyError::invalid_header("archive has no main-streams info")
+            })?;
+
+        if idx >= ms.folders.len() {
+            return Err(SevenZippyError::invalid_header(format!(
+                "file {idx} has no corresponding folder (only {} folders)",
+                ms.folders.len()
+            )));
+        }
+
+        let folder = &ms.folders[idx];
+        let packed_slices = self.packed_slices_for_folder(folder, ms)?;
+        let packed_refs: Vec<&[u8]> = packed_slices.iter().map(|s| s.as_slice()).collect();
+
+        pipeline::decode_folder_with_password(folder, &packed_refs, password)
+    }
+
     /// Extract all files, returning `(name, bytes)` pairs.
     pub fn extract_all(&self) -> SevenZippyResult<Vec<(String, Vec<u8>)>> {
         (0..self.archive.file_count())
