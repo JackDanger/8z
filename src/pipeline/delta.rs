@@ -191,7 +191,9 @@ mod tests {
     #[test]
     fn large_random_round_trip() {
         let coder = DeltaCoder::new(2);
-        let input: Vec<u8> = (0u16..=65535).map(|x| (x * 7 + 13) as u8).collect();
+        let input: Vec<u8> = (0u16..=65535)
+            .map(|x| (x.wrapping_mul(7).wrapping_add(13)) as u8)
+            .collect();
         let encoded = coder.encode(&input).unwrap();
         let decoded = coder.decode(&encoded, input.len() as u64).unwrap();
         assert_eq!(decoded, input);

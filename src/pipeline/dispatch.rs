@@ -96,9 +96,48 @@ pub fn coder_for(coder_meta: &CoderMeta) -> SevenZippyResult<Box<dyn Coder>> {
             }
         }
 
+        // ── BCJ family filters — feature-gated ─────────────────────────────
+        #[cfg(feature = "bcj")]
+        [0x03, 0x03, 0x01, 0x03] => {
+            use crate::pipeline::bcj::{BcjArch, BcjCoder};
+            BcjCoder::from_arch_props(BcjArch::X86, &coder_meta.properties)
+                .map(|c| Box::new(c) as Box<dyn Coder>)
+        }
+        #[cfg(feature = "bcj")]
+        [0x03, 0x03, 0x02, 0x05] => {
+            use crate::pipeline::bcj::{BcjArch, BcjCoder};
+            BcjCoder::from_arch_props(BcjArch::PowerPc, &coder_meta.properties)
+                .map(|c| Box::new(c) as Box<dyn Coder>)
+        }
+        #[cfg(feature = "bcj")]
+        [0x03, 0x03, 0x04, 0x01] => {
+            use crate::pipeline::bcj::{BcjArch, BcjCoder};
+            BcjCoder::from_arch_props(BcjArch::Ia64, &coder_meta.properties)
+                .map(|c| Box::new(c) as Box<dyn Coder>)
+        }
+        #[cfg(feature = "bcj")]
+        [0x03, 0x03, 0x05, 0x01] => {
+            use crate::pipeline::bcj::{BcjArch, BcjCoder};
+            BcjCoder::from_arch_props(BcjArch::Arm, &coder_meta.properties)
+                .map(|c| Box::new(c) as Box<dyn Coder>)
+        }
+        #[cfg(feature = "bcj")]
+        [0x03, 0x03, 0x07, 0x01] => {
+            use crate::pipeline::bcj::{BcjArch, BcjCoder};
+            BcjCoder::from_arch_props(BcjArch::ArmThumb, &coder_meta.properties)
+                .map(|c| Box::new(c) as Box<dyn Coder>)
+        }
+        #[cfg(feature = "bcj")]
+        [0x03, 0x03, 0x08, 0x05] => {
+            use crate::pipeline::bcj::{BcjArch, BcjCoder};
+            BcjCoder::from_arch_props(BcjArch::Sparc, &coder_meta.properties)
+                .map(|c| Box::new(c) as Box<dyn Coder>)
+        }
+        // BCJ fallback when feature is disabled, or unknown BCJ variant
+        [0x03, 0x03, ..] => Err(SevenZippyError::missing_coder("BCJ family")),
+
         // ── codec stubs — feature-gated ─────────────────────────────────────
         [0x21] => Err(SevenZippyError::missing_coder("LZMA2")),
-        [0x03, 0x03, ..] => Err(SevenZippyError::missing_coder("BCJ family")),
         [0x06, 0xF1, 0x07, 0x01] => Err(SevenZippyError::missing_coder("AES+SHA-256")),
 
         _ => Err(SevenZippyError::unsupported_method(

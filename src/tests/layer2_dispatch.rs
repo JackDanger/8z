@@ -158,9 +158,29 @@ fn ppmd_dispatches_or_is_missing() {
     }
 }
 
+/// BCJ x86 dispatches to BcjCoder when the `bcj` feature is enabled,
+/// or returns MissingCoder when the feature is disabled.
 #[test]
-fn bcj_is_missing() {
-    assert_missing_coder(&MethodId::bcj(), "BCJ");
+fn bcj_dispatches_or_is_missing() {
+    let result = coder_for(&MethodId::bcj());
+    #[cfg(feature = "bcj")]
+    {
+        let coder = result.expect("BCJ coder must be available when bcj feature is enabled");
+        assert_eq!(coder.method_id(), MethodId::bcj());
+    }
+    #[cfg(not(feature = "bcj"))]
+    {
+        assert!(
+            matches!(result, Err(SevenZippyError::MissingCoder { .. })),
+            "expected MissingCoder when bcj feature is disabled, got {result:?}"
+        );
+    }
+}
+
+/// BCJ2 is not yet implemented regardless of feature flags.
+#[test]
+fn bcj2_is_missing() {
+    assert_missing_coder(&MethodId::bcj2(), "BCJ2");
 }
 
 /// When built with `--features delta` (the default), dispatch returns a live
