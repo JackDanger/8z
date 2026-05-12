@@ -1,4 +1,4 @@
-//! BCJ (Branch/Call/Jump) family filter coders — in-tree implementation.
+//! BCJ (Branch/Call/Jump) family filter coders — via `jumpzippy` sub-crate.
 //!
 //! BCJ filters are pre-conditioners that convert architecture-specific
 //! relative branch offsets to absolute addresses, making byte patterns more
@@ -15,11 +15,11 @@
 //! | BCJ ARM-Thumb | `[0x03, 0x03, 0x07, 0x01]`       |
 //! | BCJ SPARC     | `[0x03, 0x03, 0x08, 0x05]`       |
 //!
-//! # Phase 1
+//! # Backend
 //!
-//! Phase 1 uses the `lzma-rust2` BCJ filter module (`lzma_rust2::filter::bcj`)
-//! which is an established pure-Rust implementation of all ISA variants. A
-//! future Phase 2 `jumpzippy` sub-crate will own these implementations directly.
+//! Delegates to `jumpzippy::{x86,arm,arm_thumb,ppc,ia64,sparc}::encode`/`decode`.
+//! Phase 1 jumpzippy wraps `lzma-rust2`'s BCJ filter module. Phase 2 will
+//! replace with native SIMD-optimized implementations in the `jumpzippy` crate.
 //!
 //! # Properties
 //!
@@ -30,11 +30,6 @@
 //! # Encoding vs decoding symmetry
 //!
 //! BCJ is a self-inverse filter: applying it twice returns the original data.
-//! We use `BcjWriter` (encode) and `BcjReader` (decode), both from lzma_rust2.
-
-use std::io::{Read, Write};
-
-use lzma_rust2::filter::bcj::{BcjReader, BcjWriter};
 
 use crate::container::MethodId;
 use crate::error::{SevenZippyError, SevenZippyResult};
@@ -69,7 +64,7 @@ impl BcjArch {
 
 // ── BcjCoder ─────────────────────────────────────────────────────────────────
 
-/// BCJ filter coder backed by `lzma_rust2::filter::bcj` (Phase 1).
+/// BCJ filter coder backed by `jumpzippy` (Phase 1).
 pub struct BcjCoder {
     arch: BcjArch,
     /// Starting byte offset for the filter (LE u32 from the properties blob, or 0).
@@ -99,62 +94,39 @@ impl BcjCoder {
     }
 
     /// Apply the BCJ encode transform to `input`, returning filtered bytes.
-    fn apply_encode(&self, input: &[u8]) -> SevenZippyResult<Vec<u8>> {
-        let pos = self.start_pos as usize;
-        // Use a macro to avoid repeating the write_all + finish pattern for each variant.
-        macro_rules! encode_with {
-            ($writer:expr) => {{
-                let mut w = $writer;
-                w.write_all(input).map_err(|e| {
-                    SevenZippyError::Coder(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-                })?;
-                w.finish().map_err(|e| {
-                    SevenZippyError::Coder(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-                })
-            }};
-        }
+    fn apply_encode(&self, input: &[u8]) -> Vec<u8> {
+        let pc = self.start_pos as u64;
         match self.arch {
-            BcjArch::X86 => encode_with!(BcjWriter::new_x86(Vec::new(), pos)),
-            BcjArch::PowerPc => encode_with!(BcjWriter::new_ppc(Vec::new(), pos)),
-            BcjArch::Ia64 => encode_with!(BcjWriter::new_ia64(Vec::new(), pos)),
-            BcjArch::Arm => encode_with!(BcjWriter::new_arm(Vec::new(), pos)),
-            BcjArch::ArmThumb => encode_with!(BcjWriter::new_arm_thumb(Vec::new(), pos)),
-            BcjArch::Sparc => encode_with!(BcjWriter::new_sparc(Vec::new(), pos)),
+            BcjArch::X86 => jumpzippy::x86::encode(input, pc),
+            BcjArch::PowerPc => jumpzippy::ppc::encode(input, pc),
+            BcjArch::Ia64 => jumpzippy::ia64::encode(input, pc),
+            BcjArch::Arm => jumpzippy::arm::encode(input, pc),
+            BcjArch::ArmThumb => jumpzippy::arm_thumb::encode(input, pc),
+            BcjArch::Sparc => jumpzippy::sparc::encode(input, pc),
         }
     }
 
     /// Apply the BCJ decode transform to `packed`, returning original bytes.
-    fn apply_decode(&self, packed: &[u8]) -> SevenZippyResult<Vec<u8>> {
-        let pos = self.start_pos as usize;
-        let cursor = std::io::Cursor::new(packed);
-        let mut out = Vec::with_capacity(packed.len());
-        macro_rules! decode_with {
-            ($reader:expr) => {{
-                let mut r = $reader;
-                r.read_to_end(&mut out).map_err(|e| {
-                    SevenZippyError::Coder(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-                })?;
-            }};
-        }
+    fn apply_decode(&self, packed: &[u8]) -> Vec<u8> {
+        let pc = self.start_pos as u64;
         match self.arch {
-            BcjArch::X86 => decode_with!(BcjReader::new_x86(cursor, pos)),
-            BcjArch::PowerPc => decode_with!(BcjReader::new_ppc(cursor, pos)),
-            BcjArch::Ia64 => decode_with!(BcjReader::new_ia64(cursor, pos)),
-            BcjArch::Arm => decode_with!(BcjReader::new_arm(cursor, pos)),
-            BcjArch::ArmThumb => decode_with!(BcjReader::new_arm_thumb(cursor, pos)),
-            BcjArch::Sparc => decode_with!(BcjReader::new_sparc(cursor, pos)),
+            BcjArch::X86 => jumpzippy::x86::decode(packed, pc),
+            BcjArch::PowerPc => jumpzippy::ppc::decode(packed, pc),
+            BcjArch::Ia64 => jumpzippy::ia64::decode(packed, pc),
+            BcjArch::Arm => jumpzippy::arm::decode(packed, pc),
+            BcjArch::ArmThumb => jumpzippy::arm_thumb::decode(packed, pc),
+            BcjArch::Sparc => jumpzippy::sparc::decode(packed, pc),
         }
-        Ok(out)
     }
 }
 
 impl Coder for BcjCoder {
     fn decode(&self, packed: &[u8], _unpacked_size: u64) -> SevenZippyResult<Vec<u8>> {
-        self.apply_decode(packed)
+        Ok(self.apply_decode(packed))
     }
 
     fn encode(&self, unpacked: &[u8]) -> SevenZippyResult<Vec<u8>> {
-        self.apply_encode(unpacked)
+        Ok(self.apply_encode(unpacked))
     }
 
     fn method_id(&self) -> MethodId {

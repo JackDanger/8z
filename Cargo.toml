@@ -29,10 +29,8 @@ crc32fast = "1"
 lazippy    = { version = "0.0.1", path = "../lazippy",    optional = true }
 pippyzippy = { version = "0.0.1", path = "../pippyzippy", optional = true }
 bzippy2    = { version = "0.0.1", path = "../bzippy2",    optional = true }
-# BCJ filters use the lzma-rust2 filter module (same backend as lazippy uses for LZMA).
-# Phase 1: in-tree BCJ coder backed by lzma_rust2::filter::bcj. No separate jumpzippy
-# sub-crate is needed for Phase 1.
-lzma-rust2  = { version = "0.16", features = ["encoder"], optional = true }
+# BCJ filters via jumpzippy sub-crate (wraps lzma-rust2 BCJ backend in Phase 1).
+jumpzippy   = { version = "0.0.1", path = "../jumpzippy",  optional = true }
 lazippier   = { version = "0.0.1", path = "../lazippier",   optional = true }
 # gzippy 0.5 does not yet expose raw-deflate primitives (its public API only
 # produces gzip-framed output); using flate2 directly for Phase 1 Deflate
@@ -57,7 +55,7 @@ deflate64 = ["dep:deflate64"]  # in-tree; decode-only (no Rust encoder exists fo
 bzip2     = ["dep:bzippy2"]
 delta     = []  # in-tree implementation; no sub-crate dependency
 ppmd      = ["dep:pippyzippy"]
-bcj       = ["dep:lzma-rust2"]  # BCJ filters via lzma-rust2 filter module (Phase 1)
+bcj       = ["dep:jumpzippy"]   # BCJ filters via jumpzippy sub-crate
 lzma2     = ["dep:lazippier"]
 bcj2      = ["dep:jumpzippier", "lzma"]  # BCJ2 4-stream filter; requires LZMA for inner stream
 aes       = ["dep:lockzippy"]           # AES-256-CBC decryption (decode-only in Phase 1)
