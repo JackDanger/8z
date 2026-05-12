@@ -500,6 +500,84 @@ fn we_read_seven_zips_aes_archive() {
     assert_slices_eq!(extracted, input);
 }
 
+/// Write an AES+LZMA2 archive with 7zippy (using `add_encrypted_file`), then
+/// extract it with `7zz`. This is the deferred oracle test from PR #7.
+///
+/// Password: "test1234". Payload: 64 KiB of seeded pseudo-random bytes.
+#[cfg(all(feature = "aes", feature = "lzma2"))]
+#[test]
+fn seven_zip_extracts_our_aes_lzma2_archive() {
+    require_7zz!();
+
+    let input = fixtures::random(0xAE5_AE5_AE5_AE5u64, 65_536);
+
+    let mut b = ArchiveBuilder::new();
+    b.add_encrypted_file("payload.bin", input.clone(), "test1234");
+    let archive_bytes = b.build().unwrap();
+
+    // seven_zip_decompress writes the archive and runs `7zz x -p<password>`.
+    // We need password support — call 7zz directly since seven_zip_decompress
+    // doesn't accept a password argument.
+    use super::oracle::seven_zz_path;
+    use std::process::{Command, Stdio};
+
+    let sevenzip = seven_zz_path().expect("7zz must be installed");
+    let tmp = tempfile::tempdir().expect("tempdir failed");
+    let archive_path = tmp.path().join("archive.7z");
+    let out_dir = tmp.path().join("out");
+    std::fs::create_dir_all(&out_dir).expect("create out dir failed");
+    std::fs::write(&archive_path, &archive_bytes).expect("write archive failed");
+
+    let output = Command::new(&sevenzip)
+        .arg("x")
+        .arg(format!("-o{}", out_dir.display()))
+        .arg("-ptest1234")
+        .arg("-y")
+        .arg(&archive_path)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .expect("failed to spawn 7zz");
+
+    assert!(
+        output.status.success(),
+        "7zz x failed:\nstdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+
+    // Find and read the extracted file.
+    let extracted_path = out_dir.join("payload.bin");
+    let extracted = std::fs::read(&extracted_path)
+        .unwrap_or_else(|e| panic!("failed to read extracted payload.bin: {e}"));
+
+    assert_slices_eq!(extracted, input);
+}
+
+/// Write an AES+LZMA2 archive with 7zippy and round-trip it through 7zippy's
+/// own reader (no `7zz` required).
+#[cfg(all(feature = "aes", feature = "lzma2"))]
+#[test]
+fn seven_zippy_round_trips_aes_lzma2_archive() {
+    let input = fixtures::random(0xAE5_CAFE_BEEF_u64, 8_192);
+    let password = "roundtrip42";
+
+    let mut b = ArchiveBuilder::new();
+    b.add_encrypted_file("data.bin", input.clone(), password);
+    let archive_bytes = b.build().expect("build failed");
+
+    let archive = Archive::parse(&archive_bytes).expect("parse failed");
+    assert_eq!(archive.file_count(), 1);
+    assert_eq!(archive.file_name(0), Some("data.bin"));
+
+    let extracted = archive
+        .reader()
+        .extract_with_password(0, password)
+        .expect("extract_with_password failed");
+
+    assert_slices_eq!(extracted, input);
+}
+
 /// Attempting to extract an encrypted archive without a password returns an error.
 #[cfg(feature = "aes")]
 #[test]
