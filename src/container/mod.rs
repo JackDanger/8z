@@ -11,7 +11,7 @@
 //! 4. Validate `next_header_crc` against the end-header block.
 //! 5. Peek at the first byte of the block:
 //!    - `0x01` → parse as plain [`Header`].
-//!    - `0x17` → return [`EightZError::not_yet_implemented("encoded header")`].
+//!    - `0x17` → return [`SevenZippyError::not_yet_implemented("encoded header")`].
 //! 6. Assemble [`Archive`].
 
 pub mod coders;
@@ -30,7 +30,7 @@ pub use signature_header::SignatureHeader;
 pub use streams::{PackedStreams, UnpackedStreams};
 
 use crate::container::crc::crc32;
-use crate::error::{EightZError, EightZResult};
+use crate::error::{SevenZippyError, SevenZippyResult};
 
 // ── Archive ───────────────────────────────────────────────────────────────────
 
@@ -55,15 +55,15 @@ impl<'a> Archive<'a> {
     ///
     /// # Errors
     ///
-    /// - [`EightZError::Truncated`] if the input is shorter than expected.
-    /// - [`EightZError::InvalidSignature`] if the magic or CRCs don't match.
-    /// - [`EightZError::InvalidHeader`] if the metadata is malformed.
-    /// - [`EightZError::NotYetImplemented`] if the header uses the
+    /// - [`SevenZippyError::Truncated`] if the input is shorter than expected.
+    /// - [`SevenZippyError::InvalidSignature`] if the magic or CRCs don't match.
+    /// - [`SevenZippyError::InvalidHeader`] if the metadata is malformed.
+    /// - [`SevenZippyError::NotYetImplemented`] if the header uses the
     ///   compressed (`EncodedHeader`) form (Phase C limitation).
-    pub fn parse(input: &'a [u8]) -> EightZResult<Archive<'a>> {
+    pub fn parse(input: &'a [u8]) -> SevenZippyResult<Archive<'a>> {
         // ── Step 1: signature header ──────────────────────────────────────────
         if input.len() < 32 {
-            return Err(EightZError::truncated(format!(
+            return Err(SevenZippyError::truncated(format!(
                 "archive is {} bytes; need at least 32 for the signature header",
                 input.len()
             )));
@@ -76,13 +76,13 @@ impl<'a> Archive<'a> {
         let size = signature_header.next_header_size as usize;
         let end_header_start = 32usize
             .checked_add(offset)
-            .ok_or_else(|| EightZError::invalid_header("next_header_offset overflow"))?;
+            .ok_or_else(|| SevenZippyError::invalid_header("next_header_offset overflow"))?;
         let end_header_end = end_header_start
             .checked_add(size)
-            .ok_or_else(|| EightZError::invalid_header("next_header_size overflow"))?;
+            .ok_or_else(|| SevenZippyError::invalid_header("next_header_size overflow"))?;
 
         if input.len() < end_header_end {
-            return Err(EightZError::truncated(format!(
+            return Err(SevenZippyError::truncated(format!(
                 "archive is {} bytes; end-header block needs bytes {end_header_start}..{end_header_end}",
                 input.len()
             )));
@@ -93,7 +93,7 @@ impl<'a> Archive<'a> {
         // ── Step 4: validate end-header CRC ───────────────────────────────────
         let computed_crc = crc32(end_header_bytes);
         if computed_crc != signature_header.next_header_crc {
-            return Err(EightZError::invalid_signature(format!(
+            return Err(SevenZippyError::invalid_signature(format!(
                 "NextHeaderCRC mismatch: stored {:#010x}, computed {computed_crc:#010x}",
                 signature_header.next_header_crc
             )));

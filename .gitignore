@@ -1,8 +1,8 @@
 target/
 Cargo.lock
-is NOT ignored (8z ships a binary too eventually)
+is NOT ignored (7zippy ships a binary too eventually)
 *.swp
 .DS_Store
-/tmp/8z-corpora/
+/tmp/7zippy-corpora/
 **/criterion/
 target-criterion/

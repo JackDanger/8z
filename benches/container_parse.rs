@@ -1,7 +1,7 @@
 //! Header/folder parsing throughput in isolation (no decode).
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
-use eightz::Archive;
+use sevenzippy::Archive;
 
 mod common;
 

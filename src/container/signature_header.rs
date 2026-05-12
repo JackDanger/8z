@@ -16,7 +16,7 @@
 
 use crate::container::crc::crc32;
 use crate::container::properties::{read_u32_le, read_u64_le};
-use crate::error::{EightZError, EightZResult};
+use crate::error::{SevenZippyError, SevenZippyResult};
 
 /// Magic bytes at the start of every 7z archive.
 pub const SIGNATURE: [u8; 6] = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C];
@@ -43,13 +43,13 @@ pub struct SignatureHeader {
 impl SignatureHeader {
     /// Parse and validate the 32-byte signature header.
     ///
-    /// Returns [`EightZError::InvalidSignature`] if:
+    /// Returns [`SevenZippyError::InvalidSignature`] if:
     /// - The magic bytes don't match.
     /// - The `start_header_crc` doesn't match the CRC32 of bytes 12..32.
-    pub fn parse(input: &[u8; 32]) -> EightZResult<SignatureHeader> {
+    pub fn parse(input: &[u8; 32]) -> SevenZippyResult<SignatureHeader> {
         let sig: [u8; 6] = input[0..6].try_into().unwrap();
         if sig != SIGNATURE {
-            return Err(EightZError::invalid_signature(format!(
+            return Err(SevenZippyError::invalid_signature(format!(
                 "bad magic: expected {:02X?}, got {:02X?}",
                 SIGNATURE, sig
             )));
@@ -62,7 +62,7 @@ impl SignatureHeader {
         // CRC covers the 20 bytes at offset 12..32
         let computed_crc = crc32(&input[12..32]);
         if stored_crc != computed_crc {
-            return Err(EightZError::invalid_signature(format!(
+            return Err(SevenZippyError::invalid_signature(format!(
                 "StartHeaderCRC mismatch: stored {stored_crc:#010x}, computed {computed_crc:#010x}"
             )));
         }
@@ -141,7 +141,7 @@ mod tests {
                        // CRC will also be wrong, but magic check comes first
         let err = SignatureHeader::parse(&raw).unwrap_err();
         assert!(
-            matches!(err, crate::error::EightZError::InvalidSignature(_)),
+            matches!(err, crate::error::SevenZippyError::InvalidSignature(_)),
             "expected InvalidSignature, got {err:?}"
         );
     }
@@ -154,7 +154,7 @@ mod tests {
         let err = SignatureHeader::parse(&raw).unwrap_err();
         assert!(matches!(
             err,
-            crate::error::EightZError::InvalidSignature(_)
+            crate::error::SevenZippyError::InvalidSignature(_)
         ));
     }
 

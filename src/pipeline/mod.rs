@@ -14,15 +14,15 @@ pub use dispatch::coder_for;
 
 use crate::container::crc::crc32;
 use crate::container::{Coder as CoderMeta, Folder, MethodId};
-use crate::error::{EightZError, EightZResult};
+use crate::error::{SevenZippyError, SevenZippyResult};
 
 /// Decode one folder's packed bytes through its coder pipeline, producing
 /// the final unpacked stream.
 ///
 /// For Phase C: only single-coder folders (no bonds) are supported.
-pub fn decode_folder(folder: &Folder, packed: &[u8]) -> EightZResult<Vec<u8>> {
+pub fn decode_folder(folder: &Folder, packed: &[u8]) -> SevenZippyResult<Vec<u8>> {
     if folder.coders.len() != 1 || !folder.bonds.is_empty() {
-        return Err(EightZError::not_yet_implemented(
+        return Err(SevenZippyError::not_yet_implemented(
             "multi-coder folder pipeline",
         ));
     }
@@ -42,7 +42,7 @@ pub fn decode_folder(folder: &Folder, packed: &[u8]) -> EightZResult<Vec<u8>> {
 pub fn encode_single_coder_folder(
     coder: &dyn Coder,
     unpacked: &[u8],
-) -> EightZResult<(Vec<u8>, Folder)> {
+) -> SevenZippyResult<(Vec<u8>, Folder)> {
     let packed = coder.encode(unpacked)?;
     let folder = Folder {
         coders: vec![CoderMeta {
@@ -60,7 +60,7 @@ pub fn encode_single_coder_folder(
 }
 
 /// Convenience: encode using the in-tree Copy coder.
-pub fn encode_copy_folder(unpacked: &[u8]) -> EightZResult<(Vec<u8>, Folder)> {
+pub fn encode_copy_folder(unpacked: &[u8]) -> SevenZippyResult<(Vec<u8>, Folder)> {
     encode_single_coder_folder(&CopyCoder, unpacked)
 }
 
@@ -115,6 +115,6 @@ mod tests {
             unpack_crc: None,
         };
         let result = decode_folder(&folder, b"hello");
-        assert!(matches!(result, Err(EightZError::NotYetImplemented(_))));
+        assert!(matches!(result, Err(SevenZippyError::NotYetImplemented(_))));
     }
 }

@@ -1,6 +1,6 @@
 # Hard-Won Lessons
 
-This file records discoveries and gotchas encountered during 8z development.
+This file records discoveries and gotchas encountered during 7zippy development.
 
 ## Day 1: Oracle Testing is Non-Negotiable
 

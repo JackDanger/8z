@@ -1,19 +1,19 @@
 //! Copy coder — the simplest possible codec: identity (memcpy).
 
 use crate::container::MethodId;
-use crate::error::{EightZError, EightZResult};
+use crate::error::{SevenZippyError, SevenZippyResult};
 use crate::pipeline::Coder;
 
 /// The Copy coder performs no compression: packed bytes == unpacked bytes.
 ///
-/// This is the only codec implemented in-tree in `8z` itself. All other codecs
+/// This is the only codec implemented in-tree in `7zippy` itself. All other codecs
 /// live in sibling crates (lazippy, gzippy, etc.) and plug in via the `Coder` trait.
 pub struct CopyCoder;
 
 impl Coder for CopyCoder {
-    fn decode(&self, packed: &[u8], unpacked_size: u64) -> EightZResult<Vec<u8>> {
+    fn decode(&self, packed: &[u8], unpacked_size: u64) -> SevenZippyResult<Vec<u8>> {
         if packed.len() as u64 != unpacked_size {
-            return Err(EightZError::truncated(format!(
+            return Err(SevenZippyError::truncated(format!(
                 "Copy coder: packed size {} != unpacked size {}",
                 packed.len(),
                 unpacked_size
@@ -22,7 +22,7 @@ impl Coder for CopyCoder {
         Ok(packed.to_vec())
     }
 
-    fn encode(&self, unpacked: &[u8]) -> EightZResult<Vec<u8>> {
+    fn encode(&self, unpacked: &[u8]) -> SevenZippyResult<Vec<u8>> {
         Ok(unpacked.to_vec())
     }
 

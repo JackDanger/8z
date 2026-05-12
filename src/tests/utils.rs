@@ -1,4 +1,4 @@
-//! Test utility macros for the 8z test suite.
+//! Test utility macros for the 7zippy test suite.
 //!
 //! [`assert_slices_eq!`] is the primary export: it behaves like `assert_eq!`
 //! on byte slices but on mismatch prints up to four differing byte indices

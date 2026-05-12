@@ -7,13 +7,13 @@
 #   make -C corpora all        # fetch all three (~330 MB total)
 #   make -C corpora verify     # re-verify SHA-256 of downloaded files
 #   make -C corpora list       # print paths + sizes of downloaded files
-#   make -C corpora clean      # remove /tmp/8z-corpora/
+#   make -C corpora clean      # remove /tmp/7zippy-corpora/
 #   make -C corpora help       # show this message
 #
-# Files are stored in /tmp/8z-corpora/ and are never committed to the repo.
+# Files are stored in /tmp/7zippy-corpora/ and are never committed to the repo.
 # SHA-256 hashes are checked against corpora/SHA256SUMS in this directory.
 
-CORPORA_DIR := /tmp/8z-corpora
+CORPORA_DIR := /tmp/7zippy-corpora
 
 SILESIA_URL  := http://mattmahoney.net/dc/silesia.zip
 ENWIK8_URL   := http://mattmahoney.net/dc/enwik8.zip
@@ -30,7 +30,7 @@ SHASUMS := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))SHA256SUMS
 ## all: download all three corpora (silesia, enwik8, calgary)
 all: silesia enwik8 calgary
 
-## silesia: download Silesia corpus to /tmp/8z-corpora/silesia/
+## silesia: download Silesia corpus to /tmp/7zippy-corpora/silesia/
 silesia: $(CORPORA_DIR)/silesia/.extracted
 
 $(CORPORA_DIR)/silesia.zip:
@@ -59,7 +59,7 @@ $(CORPORA_DIR)/silesia/.extracted: $(CORPORA_DIR)/silesia.zip
 	touch $(CORPORA_DIR)/silesia/.extracted && \
 	echo "    extracted to $(CORPORA_DIR)/silesia/"
 
-## enwik8: download enwik8 (100 MB Wikipedia text) to /tmp/8z-corpora/enwik8
+## enwik8: download enwik8 (100 MB Wikipedia text) to /tmp/7zippy-corpora/enwik8
 enwik8: $(CORPORA_DIR)/enwik8/.extracted
 
 $(CORPORA_DIR)/enwik8.zip:
@@ -88,7 +88,7 @@ $(CORPORA_DIR)/enwik8/.extracted: $(CORPORA_DIR)/enwik8.zip
 	touch $(CORPORA_DIR)/enwik8/.extracted && \
 	echo "    extracted to $(CORPORA_DIR)/enwik8/"
 
-## calgary: download Calgary corpus (~3 MB) to /tmp/8z-corpora/calgary/
+## calgary: download Calgary corpus (~3 MB) to /tmp/7zippy-corpora/calgary/
 calgary: $(CORPORA_DIR)/calgary/.extracted
 
 $(CORPORA_DIR)/calgary.tar:
@@ -173,7 +173,7 @@ list:
 	    fi; \
 	done
 
-## clean: remove all downloaded corpora from /tmp/8z-corpora/
+## clean: remove all downloaded corpora from /tmp/7zippy-corpora/
 clean:
 	@echo "==> Removing $(CORPORA_DIR) ..."
 	@rm -rf $(CORPORA_DIR) && echo "    done."

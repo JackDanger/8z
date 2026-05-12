@@ -1,4 +1,4 @@
-//! `8z --analyze FILE`: dump folder/coder layout for debugging.
+//! `7zippy --analyze FILE`: dump folder/coder layout for debugging.
 //!
 //! Real implementation lands in a later task.
 

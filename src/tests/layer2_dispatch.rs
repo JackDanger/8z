@@ -3,14 +3,14 @@
 //! Verifies that `pipeline::coder_for(method_id)` returns the right variant
 //! for each method ID class:
 //! - Recognised + enabled  → `Ok(Box<dyn Coder>)`
-//! - Recognised + disabled → `Err(EightZError::MissingCoder { .. })`
-//! - Unrecognised           → `Err(EightZError::UnsupportedMethod { .. })`
+//! - Recognised + disabled → `Err(SevenZippyError::MissingCoder { .. })`
+//! - Unrecognised           → `Err(SevenZippyError::UnsupportedMethod { .. })`
 //!
 //! These tests exercise the dispatch layer in isolation, without running any
 //! actual compression/decompression.
 
 use crate::container::MethodId;
-use crate::error::EightZError;
+use crate::error::SevenZippyError;
 use crate::pipeline::coder_for;
 
 // ── Copy coder (always enabled, in-tree) ─────────────────────────────────────
@@ -35,18 +35,18 @@ fn copy_coder_is_identity_on_small_input() {
 
 /// When built with `--features lzma` (the default), the `lzma` feature is
 /// enabled but lazippy's integration is a stub that returns
-/// `EightZError::NotYetImplemented`.
+/// `SevenZippyError::NotYetImplemented`.
 ///
 /// When built without the `lzma` feature, dispatch returns
-/// `EightZError::MissingCoder { name: "LZMA" }`.
+/// `SevenZippyError::MissingCoder { name: "LZMA" }`.
 #[test]
 fn lzma_coder_is_not_yet_ready() {
     let result = coder_for(&MethodId::lzma());
     match result {
-        Err(EightZError::NotYetImplemented(_)) => {
+        Err(SevenZippyError::NotYetImplemented(_)) => {
             // lzma feature is enabled but integration not wired — expected.
         }
-        Err(EightZError::MissingCoder { name: "LZMA" }) => {
+        Err(SevenZippyError::MissingCoder { name: "LZMA" }) => {
             // lzma feature is disabled — also expected.
         }
         Ok(_) => panic!("LZMA dispatch should not succeed yet"),
@@ -59,7 +59,7 @@ fn lzma_coder_is_not_yet_ready() {
 fn assert_missing_coder(method: &MethodId, name: &str) {
     let result = coder_for(method);
     match result {
-        Err(EightZError::MissingCoder { .. }) => {}
+        Err(SevenZippyError::MissingCoder { .. }) => {}
         Ok(_) => panic!("{name} dispatch returned Ok — expected MissingCoder"),
         Err(e) => panic!("expected MissingCoder for {name}, got: {e}"),
     }
@@ -68,7 +68,7 @@ fn assert_missing_coder(method: &MethodId, name: &str) {
 fn assert_unsupported(method: &MethodId, label: &str) {
     let result = coder_for(method);
     match result {
-        Err(EightZError::UnsupportedMethod { .. }) => {}
+        Err(SevenZippyError::UnsupportedMethod { .. }) => {}
         Ok(_) => panic!("{label} dispatch returned Ok — expected UnsupportedMethod"),
         Err(e) => panic!("expected UnsupportedMethod for {label}, got: {e}"),
     }

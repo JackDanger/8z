@@ -30,11 +30,11 @@ oracle-check:
 status:
 	@bash scripts/status.sh
 
-## corpora: download all benchmark corpora to /tmp/8z-corpora/
+## corpora: download all benchmark corpora to /tmp/7zippy-corpora/
 corpora:
 	@$(MAKE) -C corpora all
 
-## corpora-clean: remove downloaded benchmark corpora from /tmp/8z-corpora/
+## corpora-clean: remove downloaded benchmark corpora from /tmp/7zippy-corpora/
 corpora-clean:
 	@$(MAKE) -C corpora clean
 

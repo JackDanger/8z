@@ -2,7 +2,7 @@
 //! Archive::parse → ArchiveReader::extract.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
-use eightz::Archive;
+use sevenzippy::Archive;
 
 mod common;
 

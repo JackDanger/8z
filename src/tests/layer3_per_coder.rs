@@ -2,7 +2,7 @@
 //!
 //! Each test in this module delegates to a sibling crate's own test suite
 //! by spawning `cargo test -p <crate> --lib` as a subprocess and asserting
-//! exit 0. This provides a quick cross-package sanity check from 8z's
+//! exit 0. This provides a quick cross-package sanity check from 7zippy's
 //! perspective: "do lazippy's own tests still pass?"
 //!
 //! Tests are skipped if `cargo` is not found on `$PATH`.
@@ -31,7 +31,7 @@ fn find_cargo() -> Option<std::path::PathBuf> {
     None
 }
 
-/// Verify that `lazippy`'s own lib tests pass from 8z's perspective.
+/// Verify that `lazippy`'s own lib tests pass from 7zippy's perspective.
 ///
 /// This test is skipped (`return` early) if:
 /// - `cargo` is not on PATH, or
@@ -50,7 +50,7 @@ fn lazippy_lib_tests_pass() {
         }
     };
 
-    // Resolve the lazippy path relative to the 8z workspace root.
+    // Resolve the lazippy path relative to the 7zippy workspace root.
     let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
     let lazippy_path = workspace_root.join("../lazippy");
     if !lazippy_path.exists() {

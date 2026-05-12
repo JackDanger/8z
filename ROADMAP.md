@@ -1,9 +1,9 @@
-# 8z Roadmap
+# 7zippy Roadmap
 
 ## Order of Attack
 
 ### Phase 1: Scaffolding (in progress)
-- [x] Umbrella repo structure (8z)
+- [x] Umbrella repo structure (7zippy)
 - [x] Container parser skeleton
 - [x] Copy coder (in-tree, proof of concept)
 - [x] `STATUS.md` tracking table
@@ -30,7 +30,7 @@
 
 ### Phase 5: DEFLATE Wiring (gzippy integration)
 - [ ] gzippy `lib.rs` PR (library API on existing code)
-- [ ] 8z integration harness
+- [ ] 7zippy integration harness
 - [ ] Deflate + Deflate64 round-trip
 
 ### Phase 6: PPMd (pippyzippy)
@@ -65,7 +65,7 @@
 | Phase 4 complete | 3 weeks | bzippy2 archive parsing + round-trip |
 | Phase 5 complete | 2 weeks | gzippy lib PR merged, deflate wired |
 | Phases 6–8 complete | 8 weeks | All major codecs live |
-| **8z 1.0** | ~4 months | Full `cargo build && 8z file.7z` working end-to-end |
+| **7zippy 1.0** | ~4 months | Full `cargo build && 7zippy file.7z` working end-to-end |
 
 ## Current Focus
 

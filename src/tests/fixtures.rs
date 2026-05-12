@@ -1,4 +1,4 @@
-//! Deterministic test data generators for the 8z test suite.
+//! Deterministic test data generators for the 7zippy test suite.
 //!
 //! All generators are pure functions with no external dependencies.
 //! The same `seed` and `len` always produce the same bytes — safe to

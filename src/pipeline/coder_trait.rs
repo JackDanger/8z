@@ -1,7 +1,7 @@
 //! The `Coder` trait that every codec implements.
 
 use crate::container::MethodId;
-use crate::error::EightZResult;
+use crate::error::SevenZippyResult;
 
 /// A coder converts a packed byte slice into an unpacked byte slice, or vice versa.
 ///
@@ -11,11 +11,11 @@ use crate::error::EightZResult;
 pub trait Coder: Send + Sync {
     /// Decode `packed` → unpacked bytes. `unpacked_size` is the spec-declared
     /// output size (for sanity-checking and pre-allocation).
-    fn decode(&self, packed: &[u8], unpacked_size: u64) -> EightZResult<Vec<u8>>;
+    fn decode(&self, packed: &[u8], unpacked_size: u64) -> SevenZippyResult<Vec<u8>>;
 
     /// Encode `unpacked` → packed bytes. The packed size is whatever the coder
     /// produces; the caller records it as the folder's pack_size.
-    fn encode(&self, unpacked: &[u8]) -> EightZResult<Vec<u8>>;
+    fn encode(&self, unpacked: &[u8]) -> SevenZippyResult<Vec<u8>>;
 
     /// The 7z method ID this coder advertises (returned to the container writer
     /// when building the `Coder` metadata record).

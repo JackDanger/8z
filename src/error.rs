@@ -2,9 +2,9 @@ use std::fmt;
 use std::io;
 use thiserror::Error;
 
-/// All errors produced by 8z.
+/// All errors produced by 7zippy.
 #[derive(Error, Debug)]
-pub enum EightZError {
+pub enum SevenZippyError {
     /// Wraps an underlying IO error.
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
@@ -48,38 +48,38 @@ pub enum EightZError {
     NotYetImplemented(&'static str),
 }
 
-impl EightZError {
-    /// Construct an [`InvalidSignature`](EightZError::InvalidSignature) from any `Display` value.
+impl SevenZippyError {
+    /// Construct an [`InvalidSignature`](SevenZippyError::InvalidSignature) from any `Display` value.
     pub fn invalid_signature<T: fmt::Display>(msg: T) -> Self {
-        EightZError::InvalidSignature(msg.to_string())
+        SevenZippyError::InvalidSignature(msg.to_string())
     }
 
-    /// Construct an [`InvalidHeader`](EightZError::InvalidHeader) from any `Display` value.
+    /// Construct an [`InvalidHeader`](SevenZippyError::InvalidHeader) from any `Display` value.
     pub fn invalid_header<T: fmt::Display>(msg: T) -> Self {
-        EightZError::InvalidHeader(msg.to_string())
+        SevenZippyError::InvalidHeader(msg.to_string())
     }
 
-    /// Construct a [`Truncated`](EightZError::Truncated) error from any `Display` value.
+    /// Construct a [`Truncated`](SevenZippyError::Truncated) error from any `Display` value.
     pub fn truncated<T: fmt::Display>(msg: T) -> Self {
-        EightZError::Truncated(msg.to_string())
+        SevenZippyError::Truncated(msg.to_string())
     }
 
-    /// Construct an [`InvalidArgument`](EightZError::InvalidArgument) from any `Display` value.
+    /// Construct an [`InvalidArgument`](SevenZippyError::InvalidArgument) from any `Display` value.
     pub fn invalid_argument<T: fmt::Display>(msg: T) -> Self {
-        EightZError::InvalidArgument(msg.to_string())
+        SevenZippyError::InvalidArgument(msg.to_string())
     }
 
-    /// Construct a [`NotYetImplemented`](EightZError::NotYetImplemented) error.
+    /// Construct a [`NotYetImplemented`](SevenZippyError::NotYetImplemented) error.
     pub fn not_yet_implemented(label: &'static str) -> Self {
-        EightZError::NotYetImplemented(label)
+        SevenZippyError::NotYetImplemented(label)
     }
 
-    /// Construct a [`MissingCoder`](EightZError::MissingCoder) error.
+    /// Construct a [`MissingCoder`](SevenZippyError::MissingCoder) error.
     pub fn missing_coder(name: &'static str) -> Self {
-        EightZError::MissingCoder { name }
+        SevenZippyError::MissingCoder { name }
     }
 
-    /// Construct an [`UnsupportedMethod`](EightZError::UnsupportedMethod) error.
+    /// Construct an [`UnsupportedMethod`](SevenZippyError::UnsupportedMethod) error.
     pub fn unsupported_method(method_id: Vec<u8>) -> Self {
         let name = match method_id.as_slice() {
             [0x03, 0x01, 0x01] => Some("LZMA".to_string()),
@@ -91,18 +91,18 @@ impl EightZError {
             [0x06, 0xF1, 0x07, 0x01] => Some("AES-SHA256".to_string()),
             _ => None,
         };
-        EightZError::UnsupportedMethod { method_id, name }
+        SevenZippyError::UnsupportedMethod { method_id, name }
     }
 }
 
-/// Convenience alias used throughout 8z.
-pub type EightZResult<T> = Result<T, EightZError>;
+/// Convenience alias used throughout 7zippy.
+pub type SevenZippyResult<T> = Result<T, SevenZippyError>;
 
 // ── Codec sub-crate error conversions ────────────────────────────────────────
 
 #[cfg(feature = "lzma")]
-impl From<lazippy::error::LazippyError> for EightZError {
+impl From<lazippy::error::LazippyError> for SevenZippyError {
     fn from(e: lazippy::error::LazippyError) -> Self {
-        EightZError::Coder(Box::new(e))
+        SevenZippyError::Coder(Box::new(e))
     }
 }

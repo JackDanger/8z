@@ -6,7 +6,7 @@
 
 use crate::container::coders::{parse_coder, Coder};
 use crate::container::properties::read_uint64;
-use crate::error::EightZResult;
+use crate::error::SevenZippyResult;
 
 // ── Bond ─────────────────────────────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ pub struct Folder {
 ///
 /// `unpack_sizes` and `unpack_crc` are left empty/`None` — the caller
 /// (`parse_unpack_info`) fills them in.
-pub(crate) fn parse_folder(input: &mut &[u8]) -> EightZResult<Folder> {
+pub(crate) fn parse_folder(input: &mut &[u8]) -> SevenZippyResult<Folder> {
     let num_coders = read_uint64(input)?;
     let mut coders = Vec::with_capacity(num_coders as usize);
     let mut num_in_total: u64 = 0;

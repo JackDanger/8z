@@ -3,22 +3,22 @@ members = ["."]
 resolver = "2"
 
 [package]
-name = "eightz"
+name = "sevenzippy"
 version = "0.0.1"
 edition = "2021"
 description = "Pure-Rust 7z archive implementation. Umbrella over the zippy family of codec crates."
 license = "Zlib"
-repository = "https://github.com/JackDanger/8z"
+repository = "https://github.com/JackDanger/7zippy"
 authors = ["Jack Danger Canty"]
 build = "build.rs"
-default-run = "8z"
+default-run = "7zippy"
 
 [lib]
-name = "eightz"
+name = "sevenzippy"
 path = "src/lib.rs"
 
 [[bin]]
-name = "8z"
+name = "7zippy"
 path = "src/main.rs"
 
 [dependencies]

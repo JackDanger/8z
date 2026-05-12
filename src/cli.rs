@@ -1,16 +1,17 @@
-//! 7zz-compatible argument parsing for the 8z CLI.
+//! 7zz-compatible argument parsing for the 7zippy CLI.
 //!
 //! Phase C: only `--version` and `--help` are handled. Everything else
-//! returns [`EightZError::NotYetImplemented`].
+//! returns [`SevenZippyError::NotYetImplemented`].
 
 use std::process::ExitCode;
 
-use crate::error::EightZError;
+use crate::error::SevenZippyError;
 
-const VERSION_STRING: &str = concat!("8z ", env!("CARGO_PKG_VERSION"));
+const NAME: &str = "7zippy";
+const VERSION_STRING: &str = concat!("7zippy ", env!("CARGO_PKG_VERSION"));
 
 const HELP_STRING: &str = "\
-Usage: 8z [COMMAND] [OPTIONS] [ARCHIVE] [FILES...]
+Usage: 7zippy [COMMAND] [OPTIONS] [ARCHIVE] [FILES...]
 
 Pure-Rust 7z archive implementation.
 
@@ -27,12 +28,12 @@ Options:
   --help      Print this help and exit
 
 Examples:
-  8z a archive.7z file.txt     Create archive (NYI)
-  8z x archive.7z              Extract archive (NYI)
-  un8z archive.7z              Alias for: 8z x archive.7z (NYI)
+  7zippy a archive.7z file.txt     Create archive (NYI)
+  7zippy x archive.7z              Extract archive (NYI)
+  un7zippy archive.7z              Alias for: 7zippy x archive.7z (NYI)
 ";
 
-/// Primary entry point — invoked when argv\[0\] is `8z` or `8za`.
+/// Primary entry point — invoked when argv\[0\] is `7zippy` or `7zippya`.
 pub fn run() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
 
@@ -49,15 +50,15 @@ pub fn run() -> ExitCode {
             ExitCode::SUCCESS
         }
         _ => {
-            let err = EightZError::not_yet_implemented("CLI subcommands");
-            eprintln!("8z: {err}");
-            eprintln!("Run `8z --help` for usage.");
+            let err = SevenZippyError::not_yet_implemented("CLI subcommands");
+            eprintln!("{NAME}: {err}");
+            eprintln!("Run `{NAME} --help` for usage.");
             ExitCode::FAILURE
         }
     }
 }
 
-/// Extract entry point — invoked when argv\[0\] is `un8z` or `8zcat`.
+/// Extract entry point — invoked when argv\[0\] is `un7zippy` or `7zippycat`.
 pub fn run_extract() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     let flags: Vec<&str> = args.iter().skip(1).map(String::as_str).collect();
@@ -72,9 +73,9 @@ pub fn run_extract() -> ExitCode {
             ExitCode::SUCCESS
         }
         _ => {
-            let err = EightZError::not_yet_implemented("extract subcommand");
-            eprintln!("un8z: {err}");
-            eprintln!("Run `8z --help` for usage.");
+            let err = SevenZippyError::not_yet_implemented("extract subcommand");
+            eprintln!("un7zippy: {err}");
+            eprintln!("Run `{NAME} --help` for usage.");
             ExitCode::FAILURE
         }
     }

@@ -7,7 +7,7 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use eightz::{Archive, ArchiveReader};
+//! use sevenzippy::{Archive, ArchiveReader};
 //!
 //! let bytes = std::fs::read("archive.7z").unwrap();
 //! let archive = Archive::parse(&bytes).unwrap();
@@ -18,7 +18,7 @@
 //! ```
 
 use crate::container;
-use crate::error::{EightZError, EightZResult};
+use crate::error::{SevenZippyError, SevenZippyResult};
 use crate::pipeline;
 
 // ── Archive ───────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ impl Archive {
     /// # Errors
     ///
     /// Propagates all errors from [`container::Archive::parse`].
-    pub fn parse(bytes: &[u8]) -> EightZResult<Archive> {
+    pub fn parse(bytes: &[u8]) -> SevenZippyResult<Archive> {
         let c = container::Archive::parse(bytes)?;
         Ok(Archive {
             header: c.header,
@@ -87,28 +87,26 @@ impl<'a> ArchiveReader<'a> {
     ///
     /// # Errors
     ///
-    /// - [`EightZError::InvalidArgument`] if `idx` is out of range.
-    /// - [`EightZError::InvalidHeader`] if the archive has no stream metadata.
+    /// - [`SevenZippyError::InvalidArgument`] if `idx` is out of range.
+    /// - [`SevenZippyError::InvalidHeader`] if the archive has no stream metadata.
     /// - Any error from the coder pipeline (truncated data, unsupported coder, …).
-    pub fn extract(&self, idx: usize) -> EightZResult<Vec<u8>> {
+    pub fn extract(&self, idx: usize) -> SevenZippyResult<Vec<u8>> {
         let file_count = self.archive.file_count();
         if idx >= file_count {
-            return Err(EightZError::invalid_argument(format!(
+            return Err(SevenZippyError::invalid_argument(format!(
                 "file index {idx} out of range (archive has {file_count} files)"
             )));
         }
 
-        let ms = self
-            .archive
-            .header
-            .main_streams
-            .as_ref()
-            .ok_or_else(|| EightZError::invalid_header("archive has no main-streams info"))?;
+        let ms =
+            self.archive.header.main_streams.as_ref().ok_or_else(|| {
+                SevenZippyError::invalid_header("archive has no main-streams info")
+            })?;
 
         // For Phase C: one folder per file.
         // The folder index equals the file index.
         if idx >= ms.folders.len() {
-            return Err(EightZError::invalid_header(format!(
+            return Err(SevenZippyError::invalid_header(format!(
                 "file {idx} has no corresponding folder (only {} folders)",
                 ms.folders.len()
             )));
@@ -124,7 +122,7 @@ impl<'a> ArchiveReader<'a> {
     }
 
     /// Extract all files, returning `(name, bytes)` pairs.
-    pub fn extract_all(&self) -> EightZResult<Vec<(String, Vec<u8>)>> {
+    pub fn extract_all(&self) -> SevenZippyResult<Vec<(String, Vec<u8>)>> {
         (0..self.archive.file_count())
             .map(|i| {
                 let name = self.archive.file_name(i).unwrap_or("").to_string();
@@ -145,7 +143,7 @@ impl<'a> ArchiveReader<'a> {
         &self,
         folder_idx: usize,
         ms: &'b container::UnpackedStreams,
-    ) -> EightZResult<&'b [u8]>
+    ) -> SevenZippyResult<&'b [u8]>
     where
         'a: 'b,
     {
@@ -166,7 +164,7 @@ impl<'a> ArchiveReader<'a> {
         };
 
         if folder_idx >= pack_sizes.len() {
-            return Err(EightZError::invalid_header(format!(
+            return Err(SevenZippyError::invalid_header(format!(
                 "folder {folder_idx} has no pack-size entry (only {} entries)",
                 pack_sizes.len()
             )));
@@ -180,7 +178,7 @@ impl<'a> ArchiveReader<'a> {
         let size = pack_sizes[folder_idx] as usize;
 
         if offset + size > self.archive.packed_data.len() {
-            return Err(EightZError::truncated(format!(
+            return Err(SevenZippyError::truncated(format!(
                 "folder {folder_idx} packed data [{offset}..{}] out of range (packed_data len={})",
                 offset + size,
                 self.archive.packed_data.len()

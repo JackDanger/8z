@@ -21,7 +21,7 @@
 
 use crate::container::crc::crc32;
 use crate::container::signature_header::SIGNATURE;
-use crate::error::EightZResult;
+use crate::error::SevenZippyResult;
 use crate::pipeline::{self, Coder, CopyCoder};
 
 // ── Internal types ────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ impl ArchiveBuilder {
     /// # Errors
     ///
     /// Propagates any error from the coder pipelines.
-    pub fn build(self) -> EightZResult<Vec<u8>> {
+    pub fn build(self) -> SevenZippyResult<Vec<u8>> {
         // ── Step 1: encode each file through its coder ────────────────────────
         let mut encoded_files: Vec<EncodedFile> = Vec::with_capacity(self.files.len());
         for entry in &self.files {
@@ -157,7 +157,7 @@ fn build_signature_header(offset: u64, size: u64, header_crc: u32) -> [u8; 32] {
 
 // ── End-header builder ────────────────────────────────────────────────────────
 
-fn build_header(files: &[EncodedFile], coders: &[&dyn Coder]) -> EightZResult<Vec<u8>> {
+fn build_header(files: &[EncodedFile], coders: &[&dyn Coder]) -> SevenZippyResult<Vec<u8>> {
     let num_files = files.len();
 
     if num_files == 0 {

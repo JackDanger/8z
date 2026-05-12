@@ -2,7 +2,7 @@
 //!
 //! The end-header begins with a single `Header` (0x01) or `EncodedHeader`
 //! (0x17) tag byte. For Phase C we only support the uncompressed form (0x01);
-//! the encoded (compressed) form returns [`EightZError::not_yet_implemented`].
+//! the encoded (compressed) form returns [`SevenZippyError::not_yet_implemented`].
 //!
 //! Structure (7zFormat.txt §5.3):
 //!
@@ -26,7 +26,7 @@ use crate::container::properties::{
     read_bit_vector, read_bytes, read_u32_le, read_u64_le, read_u8, read_uint64, PropertyId,
 };
 use crate::container::streams::{parse_pack_info, PackedStreams, UnpackedStreams};
-use crate::error::{EightZError, EightZResult};
+use crate::error::{SevenZippyError, SevenZippyResult};
 
 // ── FileEntry ─────────────────────────────────────────────────────────────────
 
@@ -72,9 +72,9 @@ pub struct Header {
 /// `Header` / `EncodedHeader` tag byte). The block is the slice that was
 /// located and CRC-validated by [`crate::container::Archive::parse`].
 ///
-/// Returns [`EightZError::not_yet_implemented`] if the header is encoded
+/// Returns [`SevenZippyError::not_yet_implemented`] if the header is encoded
 /// (compressed — tag 0x17). This is intentional for Phase C.
-pub(crate) fn parse(input: &[u8]) -> EightZResult<Header> {
+pub(crate) fn parse(input: &[u8]) -> SevenZippyResult<Header> {
     let mut cursor = input;
 
     let first_tag = read_u8(&mut cursor)?;
@@ -86,10 +86,10 @@ pub(crate) fn parse(input: &[u8]) -> EightZResult<Header> {
             // when 7zz uses compression for the metadata block, which it
             // normally does for large archives. Copy-only archives always use
             // the plain Header.
-            return Err(EightZError::not_yet_implemented("encoded header"));
+            return Err(SevenZippyError::not_yet_implemented("encoded header"));
         }
         other => {
-            return Err(EightZError::invalid_header(format!(
+            return Err(SevenZippyError::invalid_header(format!(
                 "expected Header (0x01) or EncodedHeader (0x17) tag, got {other:#04x}"
             )));
         }
@@ -116,7 +116,7 @@ pub(crate) fn parse(input: &[u8]) -> EightZResult<Header> {
                 skip_archive_properties(&mut cursor)?;
             }
             other => {
-                return Err(EightZError::invalid_header(format!(
+                return Err(SevenZippyError::invalid_header(format!(
                     "unexpected top-level header property {other:?}"
                 )));
             }
@@ -132,7 +132,9 @@ pub(crate) fn parse(input: &[u8]) -> EightZResult<Header> {
 
 // ── MainStreamsInfo ───────────────────────────────────────────────────────────
 
-fn parse_main_streams_info(input: &mut &[u8]) -> EightZResult<(PackedStreams, UnpackedStreams)> {
+fn parse_main_streams_info(
+    input: &mut &[u8],
+) -> SevenZippyResult<(PackedStreams, UnpackedStreams)> {
     let mut opt_pack: Option<PackedStreams> = None;
     let mut opt_unpack: Option<UnpackedStreams> = None;
 
@@ -150,33 +152,33 @@ fn parse_main_streams_info(input: &mut &[u8]) -> EightZResult<(PackedStreams, Un
                 // Sub-stream info refines the unpack view (multiple files per
                 // folder). We parse it into the already-built UnpackedStreams.
                 let us = opt_unpack.take().ok_or_else(|| {
-                    EightZError::invalid_header("SubStreamsInfo encountered before UnpackInfo")
+                    SevenZippyError::invalid_header("SubStreamsInfo encountered before UnpackInfo")
                 })?;
                 opt_unpack = Some(parse_sub_streams_info(input, us)?);
             }
             other => {
-                return Err(EightZError::invalid_header(format!(
+                return Err(SevenZippyError::invalid_header(format!(
                     "unexpected property {other:?} in MainStreamsInfo"
                 )));
             }
         }
     }
 
-    let pack =
-        opt_pack.ok_or_else(|| EightZError::invalid_header("MainStreamsInfo missing PackInfo"))?;
+    let pack = opt_pack
+        .ok_or_else(|| SevenZippyError::invalid_header("MainStreamsInfo missing PackInfo"))?;
     let unpack = opt_unpack
-        .ok_or_else(|| EightZError::invalid_header("MainStreamsInfo missing UnpackInfo"))?;
+        .ok_or_else(|| SevenZippyError::invalid_header("MainStreamsInfo missing UnpackInfo"))?;
 
     Ok((pack, unpack))
 }
 
 // ── UnpackInfo ────────────────────────────────────────────────────────────────
 
-fn parse_unpack_info(input: &mut &[u8]) -> EightZResult<UnpackedStreams> {
+fn parse_unpack_info(input: &mut &[u8]) -> SevenZippyResult<UnpackedStreams> {
     // Expect Folder (0x0B) tag
     let tag = read_u8(input)?;
     if tag != PropertyId::Folder as u8 {
-        return Err(EightZError::invalid_header(format!(
+        return Err(SevenZippyError::invalid_header(format!(
             "expected Folder (0x0B) in UnpackInfo, got {tag:#04x}"
         )));
     }
@@ -192,7 +194,7 @@ fn parse_unpack_info(input: &mut &[u8]) -> EightZResult<UnpackedStreams> {
     } else {
         // External folder data (rarely used) — not supported in Phase C
         let _data_stream_index = read_uint64(input)?;
-        return Err(EightZError::not_yet_implemented(
+        return Err(SevenZippyError::not_yet_implemented(
             "external folder data in UnpackInfo",
         ));
     }
@@ -231,7 +233,7 @@ fn parse_unpack_info(input: &mut &[u8]) -> EightZResult<UnpackedStreams> {
                 }
             }
             other => {
-                return Err(EightZError::invalid_header(format!(
+                return Err(SevenZippyError::invalid_header(format!(
                     "unexpected property {other:?} in UnpackInfo"
                 )));
             }
@@ -251,7 +253,7 @@ fn parse_unpack_info(input: &mut &[u8]) -> EightZResult<UnpackedStreams> {
 fn parse_sub_streams_info(
     input: &mut &[u8],
     mut us: UnpackedStreams,
-) -> EightZResult<UnpackedStreams> {
+) -> SevenZippyResult<UnpackedStreams> {
     let num_folders = us.folders.len();
     // Defaults: 1 sub-stream per folder
     us.num_unpack_streams = vec![1; num_folders];
@@ -308,7 +310,7 @@ fn parse_sub_streams_info(
                 }
             }
             other => {
-                return Err(EightZError::invalid_header(format!(
+                return Err(SevenZippyError::invalid_header(format!(
                     "unexpected property {other:?} in SubStreamsInfo"
                 )));
             }
@@ -320,7 +322,7 @@ fn parse_sub_streams_info(
 
 // ── FilesInfo ─────────────────────────────────────────────────────────────────
 
-fn parse_files_info(input: &mut &[u8]) -> EightZResult<Vec<FileEntry>> {
+fn parse_files_info(input: &mut &[u8]) -> SevenZippyResult<Vec<FileEntry>> {
     let num_files = read_uint64(input)? as usize;
     let mut entries: Vec<FileEntry> = (0..num_files).map(|_| FileEntry::default()).collect();
 
@@ -348,14 +350,14 @@ fn parse_files_info(input: &mut &[u8]) -> EightZResult<Vec<FileEntry>> {
                 //   []
                 let external = read_u8(&mut cur)?;
                 if external != 0 {
-                    return Err(EightZError::not_yet_implemented(
+                    return Err(SevenZippyError::not_yet_implemented(
                         "external name data in FilesInfo",
                     ));
                 }
                 // Remaining bytes are UTF-16LE null-terminated names
                 let name_data = cur; // all remaining bytes
                 if !name_data.len().is_multiple_of(2) {
-                    return Err(EightZError::invalid_header(
+                    return Err(SevenZippyError::invalid_header(
                         "Name property byte count is not even (not valid UTF-16LE)",
                     ));
                 }
@@ -364,7 +366,7 @@ fn parse_files_info(input: &mut &[u8]) -> EightZResult<Vec<FileEntry>> {
                     .map(|c| u16::from_le_bytes([c[0], c[1]]))
                     .collect();
                 let all_names = String::from_utf16(&u16s).map_err(|_| {
-                    EightZError::invalid_header("invalid UTF-16LE in Name property")
+                    SevenZippyError::invalid_header("invalid UTF-16LE in Name property")
                 })?;
                 let names: Vec<&str> = all_names.split('\x00').filter(|s| !s.is_empty()).collect();
                 for (i, name) in names.iter().take(num_files).enumerate() {
@@ -409,7 +411,7 @@ fn parse_files_info(input: &mut &[u8]) -> EightZResult<Vec<FileEntry>> {
                 };
                 let external = read_u8(&mut cur)?;
                 if external != 0 {
-                    return Err(EightZError::not_yet_implemented(
+                    return Err(SevenZippyError::not_yet_implemented(
                         "external MTime data in FilesInfo",
                     ));
                 }
@@ -430,7 +432,7 @@ fn parse_files_info(input: &mut &[u8]) -> EightZResult<Vec<FileEntry>> {
                 };
                 let external = read_u8(&mut cur)?;
                 if external != 0 {
-                    return Err(EightZError::not_yet_implemented(
+                    return Err(SevenZippyError::not_yet_implemented(
                         "external CTime/ATime data in FilesInfo",
                     ));
                 }
@@ -458,7 +460,7 @@ fn parse_files_info(input: &mut &[u8]) -> EightZResult<Vec<FileEntry>> {
                 };
                 let external = read_u8(&mut cur)?;
                 if external != 0 {
-                    return Err(EightZError::not_yet_implemented(
+                    return Err(SevenZippyError::not_yet_implemented(
                         "external Attributes data in FilesInfo",
                     ));
                 }
@@ -488,7 +490,7 @@ fn parse_files_info(input: &mut &[u8]) -> EightZResult<Vec<FileEntry>> {
 
 // ── ArchiveProperties ────────────────────────────────────────────────────────
 
-fn skip_archive_properties(input: &mut &[u8]) -> EightZResult<()> {
+fn skip_archive_properties(input: &mut &[u8]) -> SevenZippyResult<()> {
     loop {
         let prop = read_u8(input)?;
         if prop == PropertyId::End as u8 {

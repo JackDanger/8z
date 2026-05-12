@@ -1,7 +1,7 @@
 //! End-to-end archive write throughput. ArchiveBuilder::add_copy_file → build().
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
-use eightz::ArchiveBuilder;
+use sevenzippy::ArchiveBuilder;
 
 mod common;
 

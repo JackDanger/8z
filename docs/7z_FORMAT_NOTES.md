@@ -8,7 +8,7 @@ Quick reference for 7z archive structure and codec routing. See the official spe
 
 | Algorithm | Method ID | Sub-Crate | Repo |
 |-----------|-----------|-----------|------|
-| **Copy** | `0x00` | 8z (in-tree) | — |
+| **Copy** | `0x00` | 7zippy (in-tree) | — |
 | **LZMA** | `03 01 01` | lazippy | JackDanger/lazippy |
 | **LZMA2** | `21` | lazippier | JackDanger/lazippier |
 | **PPMd** | `03 04 01` | pippyzippy | JackDanger/pippyzippy |
@@ -86,7 +86,7 @@ Packed bytes → BCJ decode → LZMA2 decode → File bytes
 
 Both method IDs appear in the Folder's coder chain. They're called in sequence.
 
-## Dispatch Routing (8z's src/pipeline/dispatch.rs)
+## Dispatch Routing (7zippy's src/pipeline/dispatch.rs)
 
 Given a MethodId (parsed from Container), return a trait object implementing the `Coder` trait:
 

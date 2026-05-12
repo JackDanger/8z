@@ -1,4 +1,4 @@
-# Iteration Loop — How 8z Gets Built
+# Iteration Loop — How 7zippy Gets Built
 
 This document describes the repeating cycle that moves us from one task to the next.
 
@@ -31,7 +31,7 @@ Opus crafts a self-contained prompt with:
 
 Example dispatch:
 ```
-Task: Implement the Copy coder in 8z
+Task: Implement the Copy coder in 7zippy
 
 Build src/pipeline/copy.rs with:
   - CopyCoder struct implementing the Coder trait
@@ -109,7 +109,7 @@ When a sub-crate (lazippy, bzippy2, etc.) is ready:
 
 1. **Agent creates the repo** — `gh repo create JackDanger/lazippy --public`
 2. **Agent pushes the template** — all files committed, CI green
-3. **Opus wires it into 8z** — add dependency, dispatch next round
+3. **Opus wires it into 7zippy** — add dependency, dispatch next round
 4. **Back to step 1** — STATUS.md now shows the new crate live
 
 ## Why This Works
@@ -127,7 +127,7 @@ Run `make status` to print it:
 ```bash
 $ make status
 Current focus:
-  8z umbrella scaffolding (Phase C) / next: container parser
+  7zippy umbrella scaffolding (Phase C) / next: container parser
 
 Next task:
   Container header

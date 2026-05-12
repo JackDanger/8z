@@ -1,10 +1,10 @@
-# 8z Architecture
+# 7zippy Architecture
 
 ## Pipeline Layers
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                  8z CLI / Library API                       │
+│                  7zippy CLI / Library API                   │
 │            (read_archive, write_archive, list)              │
 └──────────────────┬──────────────────────────────────────────┘
                    │
@@ -27,7 +27,7 @@
 │             Codec Implementations (Coder trait)             │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐   │
 │  │  Copy    │ │  LZMA    │ │ BZip2    │ │  Deflate     │   │
-│  │ (8z)     │ │(lazippy) │ │(bzippy2) │ │  (gzippy)    │   │
+│  │ (7zippy) │ │(lazippy) │ │(bzippy2) │ │  (gzippy)    │   │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────────┘   │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐   │
 │  │  LZMA2   │ │  PPMd    │ │  BCJ     │ │  BCJ2        │   │
@@ -76,13 +76,13 @@ impl Coder for LzmaCoder {
 }
 ```
 
-Sub-crate repos are public and independent (so they can be published to crates.io), but 8z depends on them as ordinary `[dependencies]` entries (feature-gated).
+Sub-crate repos are public and independent (so they can be published to crates.io), but 7zippy depends on them as ordinary `[dependencies]` entries (feature-gated).
 
 ## Data Flow: Decompress
 
 ```
 user calls
-  8z::read_archive("file.7z") → read Container → iterate Folders
+  sevenzippy::read_archive("file.7z") → read Container → iterate Folders
     for each Folder:
       parse Coder chain from Container
       Pipeline::dispatch(MethodId) → Coder trait object
@@ -95,7 +95,7 @@ user calls
 
 ```
 user calls
-  8z::write_archive(files, CoderSpec) → create Container
+  sevenzippy::write_archive(files, CoderSpec) → create Container
     for each file:
       Pipeline::dispatch(CoderSpec::method_id) → Coder trait object
       call Coder::encode(bytes, properties) → packed bytes
@@ -114,7 +114,7 @@ The test suite is organized by **data complexity** — not by module:
 4. **layer2_dispatch.rs** — route the correct method ID → Coder
 5. **layer3_per_coder.rs** — smoke tests per codec (call Coder trait, no real impl yet)
 6. **layer4_pipeline.rs** — full folder pipeline (Copy-only; lights up as codecs land)
-7. **layer5_cross.rs** — 8z ↔ 7zz round-trip compatibility
+7. **layer5_cross.rs** — 7zippy ↔ 7zz round-trip compatibility
 8. **layer6_threads.rs** — placeholder; threading comes later
 9. **layer7_perf.rs** — throughput bounds (informational, off by default)
 10. **oracle.rs** — 7zz harness (compress/decompress via CLI)

@@ -8,7 +8,7 @@ use crate::container::folders::Folder;
 use crate::container::properties::{
     read_bit_vector, read_u32_le, read_u8, read_uint64, PropertyId,
 };
-use crate::error::{EightZError, EightZResult};
+use crate::error::{SevenZippyError, SevenZippyResult};
 
 // ── PackedStreams ─────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ pub struct PackedStreams {
 ///
 /// The cursor must be positioned immediately after the `PackInfo` (0x06) tag
 /// byte. Reading continues until the `End` (0x00) tag is consumed.
-pub(crate) fn parse_pack_info(input: &mut &[u8]) -> EightZResult<PackedStreams> {
+pub(crate) fn parse_pack_info(input: &mut &[u8]) -> SevenZippyResult<PackedStreams> {
     let pack_pos = read_uint64(input)?;
     let num_pack = read_uint64(input)? as usize;
 
@@ -60,7 +60,7 @@ pub(crate) fn parse_pack_info(input: &mut &[u8]) -> EightZResult<PackedStreams> 
                 }
             }
             other => {
-                return Err(EightZError::invalid_header(format!(
+                return Err(SevenZippyError::invalid_header(format!(
                     "unexpected property {other:?} in PackInfo"
                 )));
             }

@@ -1,4 +1,4 @@
-//! Build script for 8z.
+//! Build script for 7zippy.
 //!
 //! Installs git hooks (pre-commit, pre-push) on first build.
 //! Idempotent: only updates if source is newer than destination.

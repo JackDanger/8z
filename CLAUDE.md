@@ -1,8 +1,8 @@
-# CLAUDE.md — 8z Development Guide
+# CLAUDE.md — 7zippy Development Guide
 
 ## Prime Directive
 
-**8z aims to be a complete, correct, and fast pure-Rust 7z archive implementation.**
+**7zippy aims to be a complete, correct, and fast pure-Rust 7z archive implementation.**
 
 ## Absolute Rules
 
@@ -10,13 +10,13 @@
 2. **RUN `make` BEFORE PUSH** — `make` catches regressions in < 1 minute.
 3. **UPDATE `STATUS.md` IN EVERY PR** — it is the source of truth for our position. Every commit touching `src/` must update the corresponding row in `STATUS.md`.
 4. **ORACLE TESTS ARE NOT OPTIONAL** — all codec implementations must pass round-trip tests against the `7zz` CLI. Missing oracle tests = incomplete work.
-5. **OPUS DELEGATES, SONNET AND HAIKU IMPLEMENT** — this repo uses an agent orchestration model. Opus (oversight-only) reads `STATUS.md`, dispatches agents, and reviews. Sonnet (judgment work) and Haiku (mechanical work) do all implementation. See the [Iteration Loop](#iteration-loop) below and `memory/8z-opus-oversight-only.md`.
+5. **OPUS DELEGATES, SONNET AND HAIKU IMPLEMENT** — this repo uses an agent orchestration model. Opus (oversight-only) reads `STATUS.md`, dispatches agents, and reviews. Sonnet (judgment work) and Haiku (mechanical work) do all implementation. See the [Iteration Loop](#iteration-loop) below and `memory/7zippy-opus-oversight-only.md`.
 
 ## Production Routing (Phase C scaffolding)
 
 ```
 Container → Header → Folders → Coders
-                              ├── Copy (in-tree, 8z)
+                              ├── Copy (in-tree, 7zippy)
                               ├── LZMA (lazippy, future)
                               ├── ... (future)
 ```
@@ -27,8 +27,8 @@ Currently: nothing is live yet — Phase C scaffolding only. Copy coder lands in
 
 | Coder | Crate | Notes |
 |---|---|---|
-| Container header | 8z | 🟡 (parser in flight, task #5) |
-| Copy | 8z | ⬜ (in-tree, task #6) |
+| Container header | 7zippy | 🟡 (parser in flight, task #5) |
+| Copy | 7zippy | ⬜ (in-tree, task #6) |
 | LZMA | lazippy | ⬜ (template repo exists: https://github.com/JackDanger/lazippy) |
 | Deflate | gzippy | ⬜ (lib-API PR open: https://github.com/JackDanger/gzippy/pull/86) |
 | (others) | sub-crates | ⬜ (repos not yet created) |

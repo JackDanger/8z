@@ -5,7 +5,7 @@
 //! and carries optional codec-specific properties.
 
 use crate::container::properties::{read_bytes, read_u8, read_uint64};
-use crate::error::EightZResult;
+use crate::error::SevenZippyResult;
 
 // ── MethodId ──────────────────────────────────────────────────────────────────
 
@@ -133,7 +133,7 @@ pub struct Coder {
 ///   PropertiesSize UINT64
 ///   Properties[PropertiesSize]
 /// ```
-pub(crate) fn parse_coder(input: &mut &[u8]) -> EightZResult<Coder> {
+pub(crate) fn parse_coder(input: &mut &[u8]) -> SevenZippyResult<Coder> {
     let flag = read_u8(input)?;
     let id_size = (flag & 0x0F) as usize;
     let is_complex = (flag >> 4) & 1 != 0;

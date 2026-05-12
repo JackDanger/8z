@@ -1,7 +1,7 @@
 # corpora — benchmark corpus fetcher
 
 This directory contains a `Makefile` that downloads standard compression
-benchmark corpora to `/tmp/8z-corpora/` on demand.  Nothing downloaded here is
+benchmark corpora to `/tmp/7zippy-corpora/` on demand.  Nothing downloaded here is
 ever committed to the repository; the only committed files are:
 
 - `Makefile` — the downloader itself
@@ -13,9 +13,9 @@ ever committed to the repository; the only committed files are:
 
 ```sh
 # Fetch a single corpus
-make -C corpora silesia     # ~76 MB download -> /tmp/8z-corpora/silesia/
-make -C corpora enwik8      # ~36 MB download -> /tmp/8z-corpora/enwik8/
-make -C corpora calgary     # ~3 MB download  -> /tmp/8z-corpora/calgary/
+make -C corpora silesia     # ~76 MB download -> /tmp/7zippy-corpora/silesia/
+make -C corpora enwik8      # ~36 MB download -> /tmp/7zippy-corpora/enwik8/
+make -C corpora calgary     # ~3 MB download  -> /tmp/7zippy-corpora/calgary/
 
 # Fetch everything (~330 MB total)
 make -C corpora all
@@ -34,7 +34,7 @@ tiny committed files.  For the large downloaded corpora, use
 `common::load_corpus(name)` (to be wired up in a future task):
 
 ```rust
-// Looks up /tmp/8z-corpora/<name>/<name> (or similar layout)
+// Looks up /tmp/7zippy-corpora/<name>/<name> (or similar layout)
 let data = common::load_corpus("enwik8");
 ```
 
@@ -50,7 +50,7 @@ make -C corpora list      # print paths and disk sizes
 ## Cleaning up
 
 ```sh
-make -C corpora clean     # rm -rf /tmp/8z-corpora/
+make -C corpora clean     # rm -rf /tmp/7zippy-corpora/
 ```
 
 ## Upstream sources

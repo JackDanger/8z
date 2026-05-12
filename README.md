@@ -1,6 +1,6 @@
-# 8z
+# 7zippy
 
-8z is a pure-Rust 7z archive implementation. Umbrella over a family of codec sub-crates (`lazippy`, `bzippy2`, `gzippy`, …). Status: scaffolding; see [STATUS.md](STATUS.md).
+7zippy is a pure-Rust 7z archive implementation. Umbrella over a family of codec sub-crates (`lazippy`, `bzippy2`, `gzippy`, …). Status: scaffolding; see [STATUS.md](STATUS.md).
 
 ## Build and test
 

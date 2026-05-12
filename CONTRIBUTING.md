@@ -1,8 +1,8 @@
-# Contributing to 8z
+# Contributing to 7zippy
 
 ## Adding a New Codec Sub-Crate
 
-8z uses a "zippy family" naming convention: codec algorithms live in their own public repos and crates as dependencies (like gzippy for DEFLATE). The process is straightforward:
+7zippy uses a "zippy family" naming convention: codec algorithms live in their own public repos and crates as dependencies (like gzippy for DEFLATE). The process is straightforward:
 
 ### 1. Clone the `lazippy` Template
 
@@ -21,15 +21,15 @@ Update `Cargo.toml`, README, and source module names to match your algorithm:
 ```toml
 [package]
 name = "bzippy2"  # or pippyzippy, jumpzippy, etc.
-description = "Pure-Rust BZip2 encoder/decoder, part of the 8z umbrella"
+description = "Pure-Rust BZip2 encoder/decoder, part of the 7zippy umbrella"
 repository = "https://github.com/JackDanger/bzippy2"
 ```
 
 Update `src/lib.rs` to export your codec module instead of LZMA stubs.
 
-### 3. Hook into 8z's Dispatch
+### 3. Hook into 7zippy's Dispatch
 
-In `8z`'s `src/pipeline/dispatch.rs`, add a match arm for your method ID:
+In `7zippy`'s `src/pipeline/dispatch.rs`, add a match arm for your method ID:
 
 ```rust
 match method_id {
@@ -50,7 +50,7 @@ Add a row to the umbrella `STATUS.md` table (or promote ⬜ to 🟡 if the row a
 
 Initial status: decoder in flight (🟡), everything else ⬜.
 
-### 5. Wire Feature Gates in 8z's Cargo.toml
+### 5. Wire Feature Gates in 7zippy's Cargo.toml
 
 In the umbrella's `Cargo.toml`:
 
@@ -63,7 +63,7 @@ bzip2 = ["dep:bzippy2"]
 default = ["lzma", "lzma2", "ppmd", "bzip2", "deflate", "bcj", "bcj2", "delta", "crypto"]
 ```
 
-The feature gate lets 8z compile even when sub-crate repos don't exist yet.
+The feature gate lets 7zippy compile even when sub-crate repos don't exist yet.
 
 ### 6. Pre-Commit / Pre-Push Checks
 
@@ -115,7 +115,7 @@ fn benchmark_decode(c: &mut Criterion) {
 }
 ```
 
-8z's umbrella benchmarks in `benches/archive_read.rs` will automatically run codec benchmarks for comparison.
+7zippy's umbrella benchmarks in `benches/archive_read.rs` will automatically run codec benchmarks for comparison.
 
 ## Code Review Expectations
 

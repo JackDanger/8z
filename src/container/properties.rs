@@ -4,14 +4,14 @@
 //! (distinct from LEB-128). It also defines a set of property-ID tags that
 //! label every block inside the end-header.
 
-use crate::error::{EightZError, EightZResult};
+use crate::error::{SevenZippyError, SevenZippyResult};
 
 // ── Primitive readers ─────────────────────────────────────────────────────────
 
 /// Read a single byte and advance the cursor.
-pub(crate) fn read_u8(input: &mut &[u8]) -> EightZResult<u8> {
+pub(crate) fn read_u8(input: &mut &[u8]) -> SevenZippyResult<u8> {
     if input.is_empty() {
-        return Err(EightZError::truncated("expected 1 byte"));
+        return Err(SevenZippyError::truncated("expected 1 byte"));
     }
     let b = input[0];
     *input = &input[1..];
@@ -19,9 +19,9 @@ pub(crate) fn read_u8(input: &mut &[u8]) -> EightZResult<u8> {
 }
 
 /// Slice off exactly `n` bytes and advance the cursor.
-pub(crate) fn read_bytes<'a>(input: &mut &'a [u8], n: usize) -> EightZResult<&'a [u8]> {
+pub(crate) fn read_bytes<'a>(input: &mut &'a [u8], n: usize) -> SevenZippyResult<&'a [u8]> {
     if input.len() < n {
-        return Err(EightZError::truncated(format!(
+        return Err(SevenZippyError::truncated(format!(
             "need {n} bytes, only {} available",
             input.len()
         )));
@@ -32,13 +32,13 @@ pub(crate) fn read_bytes<'a>(input: &mut &'a [u8], n: usize) -> EightZResult<&'a
 }
 
 /// Read a 4-byte little-endian `u32`.
-pub(crate) fn read_u32_le(input: &mut &[u8]) -> EightZResult<u32> {
+pub(crate) fn read_u32_le(input: &mut &[u8]) -> SevenZippyResult<u32> {
     let b = read_bytes(input, 4)?;
     Ok(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
 }
 
 /// Read an 8-byte little-endian `u64`.
-pub(crate) fn read_u64_le(input: &mut &[u8]) -> EightZResult<u64> {
+pub(crate) fn read_u64_le(input: &mut &[u8]) -> SevenZippyResult<u64> {
     let b = read_bytes(input, 8)?;
     Ok(u64::from_le_bytes(b.try_into().unwrap()))
 }
@@ -65,7 +65,7 @@ pub(crate) fn read_u64_le(input: &mut &[u8]) -> EightZResult<u64> {
 /// In the special case where all 8 bits of `first_byte` are set (first_byte ==
 /// 0xFF), `mask` reaches 0 after 8 iterations and the loop terminates, having
 /// read 8 extra bytes. This can represent the full u64 range.
-pub(crate) fn read_uint64(input: &mut &[u8]) -> EightZResult<u64> {
+pub(crate) fn read_uint64(input: &mut &[u8]) -> SevenZippyResult<u64> {
     let first = read_u8(input)?;
     let mut mask: u8 = 0x80;
     let mut value: u64 = 0;
@@ -90,7 +90,7 @@ pub(crate) fn read_uint64(input: &mut &[u8]) -> EightZResult<u64> {
 ///
 /// Returns a `Vec<bool>` of length `n`. The packed byte stream is ceil(n/8)
 /// bytes wide; the most-significant bit of the first byte is item 0.
-pub(crate) fn read_bit_vector(input: &mut &[u8], n: usize) -> EightZResult<Vec<bool>> {
+pub(crate) fn read_bit_vector(input: &mut &[u8], n: usize) -> SevenZippyResult<Vec<bool>> {
     let num_bytes = n.div_ceil(8);
     let raw = read_bytes(input, num_bytes)?;
     let mut result = Vec::with_capacity(n);
@@ -139,9 +139,9 @@ pub enum PropertyId {
 }
 
 impl PropertyId {
-    /// Convert a raw byte to a [`PropertyId`], returning [`EightZError::InvalidHeader`]
+    /// Convert a raw byte to a [`PropertyId`], returning [`SevenZippyError::InvalidHeader`]
     /// if the byte is not a known property tag.
-    pub fn from_u8(b: u8) -> EightZResult<Self> {
+    pub fn from_u8(b: u8) -> SevenZippyResult<Self> {
         match b {
             0x00 => Ok(Self::End),
             0x01 => Ok(Self::Header),
@@ -169,7 +169,7 @@ impl PropertyId {
             0x17 => Ok(Self::EncodedHeader),
             0x18 => Ok(Self::StartPos),
             0x19 => Ok(Self::Dummy),
-            other => Err(EightZError::invalid_header(format!(
+            other => Err(SevenZippyError::invalid_header(format!(
                 "unknown property ID {other:#04x}"
             ))),
         }
