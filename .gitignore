@@ -1,8 +1,12 @@
 target/
-Cargo.lock
-is NOT ignored (7zippy ships a binary too eventually)
+# Cargo.lock is NOT ignored (7zippy ships a binary too eventually)
 *.swp
 .DS_Store
 /tmp/7zippy-corpora/
 **/criterion/
 target-criterion/
+# Python bytecode from scripts/
+**/__pycache__/
+*.pyc
+# Local agent worktrees (these are per-machine; the codebase doesn't ship them)
+.claude/worktrees/

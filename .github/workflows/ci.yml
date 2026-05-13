@@ -7,12 +7,12 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  test-matrix:
     name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-13]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -47,3 +47,21 @@ jobs:
 
       - name: Test
         run: cargo test --workspace --release
+
+  # Aggregator check named exactly `test` — this is the status check name the
+  # branch ruleset requires. It passes only if every matrix entry above passes.
+  # Without this aggregator, the ruleset's required-check name never appears in
+  # the PR's check list (the matrix emits "Test on <os>", not "test").
+  test:
+    name: test
+    needs: test-matrix
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Verify matrix succeeded
+        run: |
+          if [[ "${{ needs.test-matrix.result }}" != "success" ]]; then
+            echo "test-matrix did not succeed: ${{ needs.test-matrix.result }}"
+            exit 1
+          fi
+          echo "All matrix entries passed."

@@ -1,6 +1,8 @@
 # 7zippy STATUS
 
-**Current focus:** Phase 1 codec parity complete. LZMA ✅, Deflate ✅, BZip2 ✅, Delta ✅, PPMd ✅, BCJ family ✅, Deflate64 ✅ (decode), LZMA2 ✅, BCJ2 ✅ (decode), AES-256 ✅ (decode). Phase 1 done.
+**Current focus:** Drain the PR backlog (#5 BCJ extraction → #6 Delta extraction → #7 AES encrypt → #8 multi-coder folder) with real review on each, then close Phase 1's remaining encode + oracle gaps (BCJ2 encode, Deflate64 encode via gzippy ≥0.6, BCJ-variant oracle rows). Phase 2 native rewrites begin after this gate.
+
+**Phase 1 exit criterion** (user-set, 2026-05-13): every codec row reaches **Decode=✅, Encode=✅, Oracle=✅**. Streaming, Bench, and Fuzz columns are not part of the Phase 1 gate.
 
 | Coder | Crate | Decode | Encode | Streaming | Oracle | Bench | Fuzz |
 |---|---|---|---|---|---|---|---|
