@@ -25,6 +25,7 @@ use crate::pipeline::Coder;
 const MAX_DISTANCE: usize = 256;
 
 /// Delta filter coder backed by `deltazippy` sub-crate.
+#[derive(Debug)]
 pub struct DeltaCoder {
     /// Byte difference distance: 1 = subtract/add adjacent bytes.
     /// Stored as-is; `properties()` returns `(distance - 1)` as one byte.
@@ -40,20 +41,26 @@ impl DeltaCoder {
         Self { distance }
     }
 
-    /// Create a Delta coder from the 1-byte properties blob stored in an archive.
+    /// Create a Delta coder from the properties blob stored in an archive.
     ///
     /// The 7z spec defines Delta filter properties as exactly 1 byte:
     /// `distance - 1`, so 0x00 → distance 1 (byte delta), 0xFF → distance 256.
-    /// Returns [`SevenZippyError::InvalidHeader`] if the blob is not exactly 1 byte.
+    ///
+    /// An empty blob is accepted and defaults to distance 1 (adjacent-byte
+    /// delta), which is by far the most common usage and is the value 7zz
+    /// emits when no distance is specified. Returns
+    /// [`SevenZippyError::InvalidHeader`] if the blob is present but longer
+    /// than 1 byte, as trailing bytes have no defined meaning in the spec.
     pub fn from_props(props: &[u8]) -> SevenZippyResult<Self> {
-        if props.len() != 1 {
-            return Err(SevenZippyError::invalid_header(format!(
-                "Delta filter properties must be exactly 1 byte, got {}",
-                props.len()
-            )));
+        match props.len() {
+            0 => Ok(Self { distance: 1 }),
+            1 => Ok(Self {
+                distance: props[0] as usize + 1,
+            }),
+            n => Err(SevenZippyError::invalid_header(format!(
+                "Delta filter properties must be 0 or 1 bytes, got {n}"
+            ))),
         }
-        let distance = props[0] as usize + 1;
-        Ok(Self { distance })
     }
 }
 
@@ -151,12 +158,10 @@ mod tests {
     }
 
     #[test]
-    fn from_props_rejects_empty_blob() {
-        let err = DeltaCoder::from_props(&[]).unwrap_err();
-        assert!(
-            err.to_string().contains("1 byte"),
-            "expected '1 byte' in error, got: {err}"
-        );
+    fn from_props_empty_blob_defaults_to_distance_1() {
+        // Empty properties blob is valid — 7zz omits props when distance == 1.
+        let coder = DeltaCoder::from_props(&[]).unwrap();
+        assert_eq!(coder.distance, 1);
     }
 
     #[test]
