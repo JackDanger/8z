@@ -1,6 +1,6 @@
 # 7zippy STATUS
 
-**Current focus:** Drain the PR backlog (#5 BCJ extraction → #6 Delta extraction → #7 AES encrypt → #8 multi-coder folder) with real review on each, then close Phase 1's remaining encode + oracle gaps (BCJ2 encode, Deflate64 encode via gzippy ≥0.6, BCJ-variant oracle rows). Phase 2 native rewrites begin after this gate.
+**Current focus:** Drain the PR backlog (#6 Delta extraction → #7 AES encrypt → #8 multi-coder folder) with real review on each, then close Phase 1's remaining encode + oracle gaps (BCJ2 encode, Deflate64 encode via gzippy ≥0.6, BCJ-variant oracle rows). Phase 2 native rewrites begin after this gate.
 
 **Phase 1 exit criterion** (user-set, 2026-05-13): every codec row reaches **Decode=✅, Encode=✅, Oracle=✅**. Streaming, Bench, and Fuzz columns are not part of the Phase 1 gate.
 
@@ -14,12 +14,12 @@
 | BZip2 | bzippy2 | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | Deflate | flate2 (Phase 1) | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | Deflate64 | deflate64 crate (in-tree) | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ |
-| BCJ (x86) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
-| BCJ (ARM) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
-| BCJ (ARM-Thumb) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
-| BCJ (PPC) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
-| BCJ (IA64) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
-| BCJ (SPARC) | 7zippy (lzma-rust2) | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
+| BCJ (x86) | jumpzippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
+| BCJ (ARM) | jumpzippy | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
+| BCJ (ARM-Thumb) | jumpzippy | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
+| BCJ (PPC) | jumpzippy | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
+| BCJ (IA64) | jumpzippy | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
+| BCJ (SPARC) | jumpzippy | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BCJ2 | jumpzippier | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ |
 | Delta | 7zippy (in-tree) | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ |
 | AES + SHA-256 | lockzippy | ✅ | ⬜ | n/a | ✅ | ⬜ | ⬜ |

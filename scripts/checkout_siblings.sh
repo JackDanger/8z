@@ -13,6 +13,7 @@ SIBLINGS=(
   lazippier
   bzippy2
   pippyzippy
+  jumpzippy
   jumpzippier
   lockzippy
 )
