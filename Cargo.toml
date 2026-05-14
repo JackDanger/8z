@@ -59,7 +59,7 @@ ppmd      = ["dep:pippyzippy"]
 bcj       = ["dep:jumpzippy"]   # BCJ filters via jumpzippy sub-crate
 lzma2     = ["dep:lazippier"]
 bcj2      = ["dep:jumpzippier", "lzma"]  # BCJ2 4-stream filter; requires LZMA for inner stream
-aes       = ["dep:lockzippy"]           # AES-256-CBC decryption (decode-only in Phase 1)
+aes       = ["dep:lockzippy"]           # AES-256-CBC decrypt + encrypt (Phase 1)
 
 [profile.release]
 lto           = "fat"

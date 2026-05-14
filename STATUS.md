@@ -1,6 +1,6 @@
 # 7zippy STATUS
 
-**Current focus:** Drain the PR backlog (#7 AES encrypt → #8 multi-coder folder) with real review on each, then close Phase 1's remaining encode + oracle gaps (BCJ2 encode, Deflate64 encode via gzippy ≥0.6, BCJ-variant oracle rows). Phase 2 native rewrites begin after this gate.
+**Current focus:** Drain the PR backlog (#8 multi-coder folder) with real review on each, then close Phase 1's remaining encode + oracle gaps (BCJ2 encode, Deflate64 encode via gzippy ≥0.6, BCJ-variant oracle rows). Phase 2 native rewrites begin after this gate.
 
 **Phase 1 exit criterion** (user-set, 2026-05-13): every codec row reaches **Decode=✅, Encode=✅, Oracle=✅**. Streaming, Bench, and Fuzz columns are not part of the Phase 1 gate.
 
@@ -22,7 +22,7 @@
 | BCJ (SPARC) | jumpzippy | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BCJ2 | jumpzippier | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ |
 | Delta | deltazippy | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ |
-| AES + SHA-256 | lockzippy | ✅ | ⬜ | n/a | ✅ | ⬜ | ⬜ |
+| AES + SHA-256 | lockzippy 0.0.2 | ✅ | 🟡 | n/a | ✅ | ⬜ | ⬜ |
 
 **Symbols**: ⬜ not started, 🟡 in progress, ✅ done, ❌ blocked
 

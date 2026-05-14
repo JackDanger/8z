@@ -61,6 +61,86 @@ pub fn has_aes_coder(folder: &crate::container::Folder) -> bool {
     folder.coders.first().is_some_and(|c| c.method_id == aes_id)
 }
 
+/// Result of encoding an AES+LZMA2 folder.
+///
+/// The caller stores `ciphertext` as the single packed stream and uses
+/// `aes_props` for the AES coder's properties entry in the 7z container.
+#[cfg(feature = "aes")]
+pub struct AesFolderEncodeResult {
+    /// The LZMA2-compressed then AES-256-CBC-encrypted bytes.
+    pub ciphertext: Vec<u8>,
+    /// AES codec properties (18 bytes: NumCyclesPower, ivSize byte, 16-byte IV).
+    pub aes_props: Vec<u8>,
+    /// LZMA2 codec properties (1-byte props byte).
+    pub lzma2_props: Vec<u8>,
+    /// Uncompressed size (before LZMA2 compression).
+    pub unpacked_size: u64,
+    /// LZMA2-compressed size (before AES encryption, before zero-padding).
+    pub lzma2_compressed_size: u64,
+}
+
+/// Encode plaintext as an AES+LZMA2 folder (compress with LZMA2, then encrypt with AES).
+///
+/// # Arguments
+///
+/// - `plaintext`: the uncompressed file bytes
+/// - `password`: the archive password (UTF-8)
+///
+/// # Returns
+///
+/// An [`AesFolderEncodeResult`] containing the ciphertext and properties needed
+/// to write the 7z folder header. The folder topology is:
+///
+/// ```text
+/// Coders: [AES, LZMA2]   Bond: AES-output → LZMA2-input
+///   Bond { in_index: 1, out_index: 0 }: coder 1 (LZMA2) reads its input
+///   from coder 0 (AES) output — decryption happens first, then
+///   decompression on the plaintext.
+/// Packed stream: ciphertext
+/// ```
+///
+/// # Errors
+///
+/// - `NotYetImplemented` if the `lzma2` feature is not enabled
+/// - Propagates LZMA2 compression errors and lockzippy encrypt errors
+#[cfg(feature = "aes")]
+pub fn encode_aes_folder(
+    plaintext: &[u8],
+    password: &str,
+) -> crate::error::SevenZippyResult<AesFolderEncodeResult> {
+    #[cfg(not(feature = "lzma2"))]
+    {
+        let _ = (plaintext, password);
+        return Err(crate::error::SevenZippyError::not_yet_implemented(
+            "AES+LZMA2 encoding requires the lzma2 feature",
+        ));
+    }
+
+    #[cfg(feature = "lzma2")]
+    {
+        use crate::pipeline::lzma2::Lzma2Coder;
+        use crate::pipeline::Coder;
+
+        // Step 1: LZMA2 compress.
+        let lzma2 = Lzma2Coder::default();
+        let compressed = lzma2.encode(plaintext)?;
+        let lzma2_props = lzma2.properties();
+        let lzma2_compressed_size = compressed.len() as u64;
+
+        // Step 2: AES-256-CBC encrypt (with random IV, NumCyclesPower=19).
+        let enc_result = lockzippy::encrypt::encrypt_7z(&compressed, password)
+            .map_err(|e| crate::error::SevenZippyError::Coder(Box::new(e)))?;
+
+        Ok(AesFolderEncodeResult {
+            ciphertext: enc_result.ciphertext,
+            aes_props: enc_result.props,
+            lzma2_props,
+            unpacked_size: plaintext.len() as u64,
+            lzma2_compressed_size,
+        })
+    }
+}
+
 /// Decode an AES+LZMA2 folder from a single packed stream byte slice.
 ///
 /// # Arguments
@@ -102,4 +182,73 @@ pub fn decode_aes_folder(
     use crate::pipeline::Coder;
     let lzma2 = Lzma2Coder::with_props(lzma2_coder.properties.clone())?;
     lzma2.decode(&decrypted, unpack_size)
+}
+
+// ── Unit tests ────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, feature = "aes", feature = "lzma2"))]
+mod tests {
+    use super::*;
+    use crate::container::{Bond, Coder as CoderMeta, Folder, MethodId};
+
+    /// Build a fake AES+LZMA2 folder metadata from encode results for decode testing.
+    fn folder_from_encode(result: &AesFolderEncodeResult) -> Folder {
+        Folder {
+            coders: vec![
+                // AES coder (index 0: outer, reads packed stream)
+                CoderMeta {
+                    method_id: MethodId(vec![0x06, 0xF1, 0x07, 0x01]),
+                    num_in_streams: 1,
+                    num_out_streams: 1,
+                    properties: result.aes_props.clone(),
+                },
+                // LZMA2 coder (index 1: inner, reads AES output)
+                CoderMeta {
+                    method_id: MethodId(vec![0x21]),
+                    num_in_streams: 1,
+                    num_out_streams: 1,
+                    properties: result.lzma2_props.clone(),
+                },
+            ],
+            bonds: vec![Bond {
+                // AES output (stream index 0) feeds LZMA2 input (stream index 1)
+                in_index: 1,
+                out_index: 0,
+            }],
+            packed_stream_indices: vec![0],
+            unpack_sizes: vec![result.lzma2_compressed_size, result.unpacked_size],
+            unpack_crc: None,
+        }
+    }
+
+    #[test]
+    fn encode_then_decode_round_trip() {
+        let plaintext = b"Hello, AES+LZMA2 round-trip test in 7zippy!".repeat(10);
+        let password = "test1234";
+
+        let encoded = encode_aes_folder(&plaintext, password).expect("encode_aes_folder failed");
+        let folder = folder_from_encode(&encoded);
+        let decoded =
+            decode_aes_folder(&folder, &encoded.ciphertext, password).expect("decode failed");
+
+        assert_eq!(decoded, plaintext, "encode+decode round-trip mismatch");
+    }
+
+    #[test]
+    fn wrong_password_fails_or_produces_garbage() {
+        let plaintext = b"secret data for encryption";
+        let encoded = encode_aes_folder(plaintext, "correct").expect("encode failed");
+        let folder = folder_from_encode(&encoded);
+        // With wrong password, decode either errors (LZMA2 rejects garbage) or produces wrong output.
+        let result = decode_aes_folder(&folder, &encoded.ciphertext, "wrong");
+        match result {
+            Err(_) => {} // Expected: LZMA2 rejects garbage
+            Ok(decrypted) => {
+                assert_ne!(
+                    decrypted, plaintext,
+                    "wrong password must not decrypt correctly"
+                );
+            }
+        }
+    }
 }
