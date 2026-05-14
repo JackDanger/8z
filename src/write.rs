@@ -22,7 +22,7 @@
 use crate::container::crc::crc32;
 use crate::container::signature_header::SIGNATURE;
 use crate::container::Folder;
-use crate::error::SevenZippyResult;
+use crate::error::{SevenZippyError, SevenZippyResult};
 use crate::pipeline::{self, Coder, CopyCoder};
 
 // ── Internal types ────────────────────────────────────────────────────────────
@@ -211,9 +211,25 @@ fn build_signature_header(offset: u64, size: u64, header_crc: u32) -> [u8; 32] {
 ///   bit  4   = 0 → simple coder (1 in / 1 out); 1 → complex coder
 ///   bit  5   = 0 → no attributes; 1 → attributes follow
 ///   bits 7:6 = reserved (0)
-fn write_coder_record(h: &mut Vec<u8>, coder: &crate::container::Coder) {
+fn write_coder_record(h: &mut Vec<u8>, coder: &crate::container::Coder) -> SevenZippyResult<()> {
     let id_bytes = &coder.method_id.0;
-    let id_size = id_bytes.len() as u8;
+    let id_len = id_bytes.len();
+
+    // The 7z header encodes the method-ID length in the low nibble of the flag
+    // byte (a 4-bit field). Spec §5.3.5: value 0 is reserved, so valid lengths
+    // are 1..=15.
+    if id_len == 0 {
+        return Err(SevenZippyError::invalid_header(
+            "coder method ID must be at least 1 byte",
+        ));
+    }
+    if id_len > 15 {
+        return Err(SevenZippyError::invalid_header(format!(
+            "coder method ID must be 1..=15 bytes, got {id_len}"
+        )));
+    }
+
+    let id_size = id_len as u8;
     let has_attrs = !coder.properties.is_empty();
     let is_complex = coder.num_in_streams != 1 || coder.num_out_streams != 1;
 
@@ -237,6 +253,8 @@ fn write_coder_record(h: &mut Vec<u8>, coder: &crate::container::Coder) {
         write_uint64(h, coder.properties.len() as u64);
         h.extend_from_slice(&coder.properties);
     }
+
+    Ok(())
 }
 
 fn build_header(files: &[EncodedFile]) -> SevenZippyResult<Vec<u8>> {
@@ -245,6 +263,29 @@ fn build_header(files: &[EncodedFile]) -> SevenZippyResult<Vec<u8>> {
     if num_files == 0 {
         // Empty archive: Header tag + End tag
         return Ok(vec![0x01, 0x00]);
+    }
+
+    // Validate that every folder produces exactly one packed stream.
+    //
+    // TODO(phase1-closure / BCJ2-encode): generalize for multi-packed-stream
+    // folders. Currently every supported encoder (Copy, LZMA, LZMA2, AES+LZMA2)
+    // produces exactly one packed stream per folder, so num_pack_streams ==
+    // num_files. When BCJ2 encode lands (which produces 4 packed streams per
+    // folder), this needs to become sum-of-per-folder-pack-stream-counts and
+    // PackSizes needs corresponding generalization. The validation just below
+    // (in build_header) enforces this invariant until then.
+    for ef in files {
+        let folder = &ef.folder;
+        let num_in_total: u64 = folder.coders.iter().map(|c| c.num_in_streams).sum();
+        let num_bonds = folder.bonds.len() as u64;
+        let folder_pack_streams = num_in_total - num_bonds;
+        if folder_pack_streams != 1 {
+            return Err(SevenZippyError::not_yet_implemented(
+                "multi-packed-stream folders not yet supported by the writer; \
+                 only single-packed-stream folders (e.g., Copy, LZMA, LZMA2, AES+LZMA2) \
+                 can be written",
+            ));
+        }
     }
 
     let mut h: Vec<u8> = Vec::new();
@@ -256,11 +297,13 @@ fn build_header(files: &[EncodedFile]) -> SevenZippyResult<Vec<u8>> {
     h.push(0x04);
 
     // ── PackInfo (0x06) ───────────────────────────────────────────────────────
-    // num_pack_streams is the total count of all packed streams across all folders.
-    // For one folder per file with one packed stream each, this equals num_files.
+    // num_pack_streams currently equals num_files because each supported encoder
+    // produces exactly one packed stream per file (enforced by the validation
+    // above). This is a documented Phase 1 limitation — see the TODO above for
+    // how this must change when BCJ2 encode lands.
     h.push(0x06);
     write_uint64(&mut h, 0); // pack_pos = 0
-    write_uint64(&mut h, num_files as u64); // num_pack_streams
+    write_uint64(&mut h, num_files as u64); // num_pack_streams (== num_files; Phase 1 invariant)
                                             // Size (0x09)
     h.push(0x09);
     for ef in files {
@@ -282,7 +325,7 @@ fn build_header(files: &[EncodedFile]) -> SevenZippyResult<Vec<u8>> {
         write_uint64(&mut h, folder.coders.len() as u64);
 
         for coder in &folder.coders {
-            write_coder_record(&mut h, coder);
+            write_coder_record(&mut h, coder)?;
         }
 
         // Bonds: per spec, NumBindPairs = NumOutStreamsTotal - 1.
@@ -510,5 +553,128 @@ mod tests {
         assert_eq!(archive.file_count(), 2);
         assert_eq!(archive.reader().extract(0).unwrap(), b"first");
         assert_eq!(archive.reader().extract(1).unwrap(), b"second");
+    }
+
+    /// Verify that a folder with multiple packed streams (e.g. BCJ2-style with
+    /// 4 input streams) is rejected with a `NotYetImplemented` error, not silently
+    /// written as a corrupt archive.
+    #[test]
+    fn multi_pack_stream_folder_is_rejected() {
+        use crate::container::{Coder, Folder, MethodId};
+        use crate::error::SevenZippyError;
+
+        // Construct a synthetic 2-coder folder that has 2 packed (unbound) input
+        // streams — mimicking the BCJ2 topology (4 in-streams, 3 bonds in the
+        // real case; here we use 2 in-streams, 1 bond = 1 remaining pack stream is
+        // OK, so let's use 2 in-streams, 0 bonds = 2 pack streams which is invalid).
+        let coder_a = Coder {
+            method_id: MethodId(vec![0x00]), // Copy
+            num_in_streams: 2,               // two unbound input streams
+            num_out_streams: 1,
+            properties: vec![],
+        };
+        let folder = Folder {
+            coders: vec![coder_a],
+            bonds: vec![], // 0 bonds → 2 packed streams
+            packed_stream_indices: vec![0, 1],
+            unpack_sizes: vec![5],
+            unpack_crc: None,
+        };
+
+        let files = vec![EncodedFile {
+            name: "test.bin".to_string(),
+            packed: b"hello".to_vec(),
+            folder,
+            unpacked_crc: 0,
+        }];
+
+        let result = build_header(&files);
+        match result {
+            Err(SevenZippyError::NotYetImplemented(msg)) => {
+                assert!(
+                    msg.contains("multi-packed-stream"),
+                    "error message should mention multi-packed-stream, got: {msg}"
+                );
+            }
+            other => panic!("expected NotYetImplemented, got: {other:?}"),
+        }
+    }
+
+    /// Verify that a coder with an empty method ID is rejected.
+    #[test]
+    fn empty_method_id_is_rejected() {
+        use crate::container::{Coder, Folder, MethodId};
+        use crate::error::SevenZippyError;
+
+        let coder = Coder {
+            method_id: MethodId(vec![]), // empty — invalid
+            num_in_streams: 1,
+            num_out_streams: 1,
+            properties: vec![],
+        };
+        let folder = Folder {
+            coders: vec![coder],
+            bonds: vec![],
+            packed_stream_indices: vec![0],
+            unpack_sizes: vec![5],
+            unpack_crc: None,
+        };
+
+        let files = vec![EncodedFile {
+            name: "test.bin".to_string(),
+            packed: b"hello".to_vec(),
+            folder,
+            unpacked_crc: 0,
+        }];
+
+        let result = build_header(&files);
+        match result {
+            Err(SevenZippyError::InvalidHeader(msg)) => {
+                assert!(
+                    msg.contains("at least 1 byte"),
+                    "error message should mention minimum size, got: {msg}"
+                );
+            }
+            other => panic!("expected InvalidHeader, got: {other:?}"),
+        }
+    }
+
+    /// Verify that a coder with a method ID exceeding 15 bytes is rejected.
+    #[test]
+    fn oversized_method_id_is_rejected() {
+        use crate::container::{Coder, Folder, MethodId};
+        use crate::error::SevenZippyError;
+
+        let coder = Coder {
+            method_id: MethodId(vec![0u8; 16]), // 16 bytes — exceeds 4-bit nibble max of 15
+            num_in_streams: 1,
+            num_out_streams: 1,
+            properties: vec![],
+        };
+        let folder = Folder {
+            coders: vec![coder],
+            bonds: vec![],
+            packed_stream_indices: vec![0],
+            unpack_sizes: vec![5],
+            unpack_crc: None,
+        };
+
+        let files = vec![EncodedFile {
+            name: "test.bin".to_string(),
+            packed: b"hello".to_vec(),
+            folder,
+            unpacked_crc: 0,
+        }];
+
+        let result = build_header(&files);
+        match result {
+            Err(SevenZippyError::InvalidHeader(msg)) => {
+                assert!(
+                    msg.contains("1..=15 bytes"),
+                    "error message should mention 1..=15 constraint, got: {msg}"
+                );
+            }
+            other => panic!("expected InvalidHeader, got: {other:?}"),
+        }
     }
 }
