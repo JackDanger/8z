@@ -128,6 +128,63 @@ pub fn copy_method_id() -> MethodId {
     MethodId::copy()
 }
 
+/// Encode plaintext into an AES+LZMA2 two-coder folder.
+///
+/// Pipeline (innermost → outermost):
+/// 1. LZMA2 compresses the plaintext.
+/// 2. AES-256-CBC encrypts the compressed bytes.
+///
+/// The returned `Folder` has:
+/// - 2 coders: AES (index 0, outer) then LZMA2 (index 1, inner).
+/// - 1 bond: `Bond { in_index: 1, out_index: 0 }` — AES output feeds LZMA2 input.
+/// - `unpack_sizes`: `[lzma2_compressed_size, plaintext_size]`.
+/// - `packed_stream_indices`: `[0]` (implicit single packed stream).
+///
+/// This matches the folder topology emitted by `7zz` for AES-encrypted archives.
+///
+/// # Errors
+///
+/// Returns `NotYetImplemented` if either the `aes` or `lzma2` feature is not enabled.
+/// Propagates LZMA2 compression and AES encryption errors.
+#[cfg(feature = "aes")]
+pub fn encode_aes_lzma2_folder(
+    plaintext: &[u8],
+    password: &str,
+) -> SevenZippyResult<(Vec<u8>, Folder)> {
+    use crate::container::Bond;
+
+    let result = aes_folder::encode_aes_folder(plaintext, password)?;
+
+    let folder = Folder {
+        coders: vec![
+            // Coder 0: AES (outer — reads the packed stream, outputs compressed bytes)
+            CoderMeta {
+                method_id: MethodId::aes_sha256(),
+                num_in_streams: 1,
+                num_out_streams: 1,
+                properties: result.aes_props,
+            },
+            // Coder 1: LZMA2 (inner — reads AES output, outputs plaintext)
+            CoderMeta {
+                method_id: MethodId::lzma2(),
+                num_in_streams: 1,
+                num_out_streams: 1,
+                properties: result.lzma2_props,
+            },
+        ],
+        bonds: vec![Bond {
+            // AES output (stream 0) feeds LZMA2 input (stream 1)
+            in_index: 1,
+            out_index: 0,
+        }],
+        packed_stream_indices: vec![0],
+        unpack_sizes: vec![result.lzma2_compressed_size, result.unpacked_size],
+        unpack_crc: Some(crc32(plaintext)),
+    };
+
+    Ok((result.ciphertext, folder))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,5 +232,72 @@ mod tests {
         };
         let result = decode_folder(&folder, &[b"hello" as &[u8]]);
         assert!(matches!(result, Err(SevenZippyError::NotYetImplemented(_))));
+    }
+
+    /// Verify that `encode_aes_lzma2_folder` produces a folder with the correct
+    /// 2-coder + 1-bond topology (AES outer, LZMA2 inner).
+    #[cfg(all(feature = "aes", feature = "lzma2"))]
+    #[test]
+    fn encode_aes_lzma2_folder_bonds_are_correct() {
+        use crate::container::{Bond, MethodId};
+
+        let plaintext = b"test payload for multi-coder bond check".repeat(5);
+        let (ciphertext, folder) =
+            encode_aes_lzma2_folder(&plaintext, "password123").expect("encode failed");
+
+        // Must have 2 coders
+        assert_eq!(folder.coders.len(), 2, "expected 2 coders");
+
+        // Coder 0 = AES (outer)
+        assert_eq!(folder.coders[0].method_id, MethodId::aes_sha256());
+        assert_eq!(folder.coders[0].num_in_streams, 1);
+        assert_eq!(folder.coders[0].num_out_streams, 1);
+        // AES properties are 18 bytes (NumCyclesPower + ivSize + 16-byte IV)
+        assert_eq!(
+            folder.coders[0].properties.len(),
+            18,
+            "AES props must be 18 bytes"
+        );
+
+        // Coder 1 = LZMA2 (inner)
+        assert_eq!(folder.coders[1].method_id, MethodId::lzma2());
+        assert_eq!(folder.coders[1].num_in_streams, 1);
+        assert_eq!(folder.coders[1].num_out_streams, 1);
+        assert_eq!(
+            folder.coders[1].properties.len(),
+            1,
+            "LZMA2 props must be 1 byte"
+        );
+
+        // Must have exactly 1 bond: AES output (0) → LZMA2 input (1)
+        assert_eq!(folder.bonds.len(), 1, "expected 1 bond");
+        assert_eq!(
+            folder.bonds[0],
+            Bond {
+                in_index: 1,
+                out_index: 0
+            }
+        );
+
+        // Packed stream index is [0] (implicit single stream)
+        assert_eq!(folder.packed_stream_indices, vec![0]);
+
+        // unpack_sizes: [lzma2_compressed, plaintext]
+        assert_eq!(folder.unpack_sizes.len(), 2);
+        assert_eq!(folder.unpack_sizes[1], plaintext.len() as u64);
+
+        // Ciphertext must be non-empty and a multiple of 16 (AES block size)
+        assert!(!ciphertext.is_empty());
+        assert_eq!(
+            ciphertext.len() % 16,
+            0,
+            "ciphertext must be AES-block-aligned"
+        );
+
+        // The folder must round-trip through the existing AES decode path
+        use crate::pipeline::aes_folder::decode_aes_folder;
+        let decrypted = decode_aes_folder(&folder, &ciphertext, "password123")
+            .expect("decode_aes_folder failed");
+        assert_eq!(decrypted, plaintext, "round-trip mismatch");
     }
 }
