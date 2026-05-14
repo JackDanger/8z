@@ -92,7 +92,10 @@ pub struct AesFolderEncodeResult {
 /// to write the 7z folder header. The folder topology is:
 ///
 /// ```text
-/// Coders: [AES, LZMA2]   Bond: LZMA2-output → AES-input
+/// Coders: [AES, LZMA2]   Bond: AES-output → LZMA2-input
+///   Bond { in_index: 1, out_index: 0 }: coder 1 (LZMA2) reads its input
+///   from coder 0 (AES) output — decryption happens first, then
+///   decompression on the plaintext.
 /// Packed stream: ciphertext
 /// ```
 ///

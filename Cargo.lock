@@ -284,6 +284,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac6b926516df9c60bfa16e107b21086399f8285a44ca9711344b9e553c5146e2"
 
 [[package]]
+name = "deltazippy"
+version = "0.0.1"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -501,6 +508,14 @@ dependencies = [
 
 [[package]]
 name = "jumpzippier"
+version = "0.0.1"
+dependencies = [
+ "lzma-rust2",
+ "thiserror",
+]
+
+[[package]]
+name = "jumpzippy"
 version = "0.0.1"
 dependencies = [
  "lzma-rust2",
@@ -827,12 +842,13 @@ dependencies = [
  "crc32fast",
  "criterion",
  "deflate64",
+ "deltazippy",
  "flate2",
  "jumpzippier",
+ "jumpzippy",
  "lazippier",
  "lazippy",
  "lockzippy",
- "lzma-rust2",
  "pippyzippy",
  "tempfile",
  "thiserror",
