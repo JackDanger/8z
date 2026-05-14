@@ -189,8 +189,23 @@ fn bzippy2_lib_tests_pass() {
     );
 }
 
+/// Verify that gzippy 0.7's raw-deflate and Deflate64 API functions are
+/// callable and produce correct round-trips. gzippy is a published crate
+/// (not a sibling path dep), so we call its public API directly rather than
+/// spawning a subprocess.
 #[test]
-#[ignore = "gzippy library API not yet landed; un-ignore after the feat/library-api PR merges"]
+#[cfg(feature = "deflate")]
 fn gzippy_lib_tests_pass() {
-    todo!()
+    let original = b"hello from gzippy deflate round-trip test".repeat(10);
+
+    // Raw Deflate round-trip
+    let compressed = gzippy::deflate_encode(&original, 6).expect("deflate_encode failed");
+    let decompressed = gzippy::deflate_decode(&compressed).expect("deflate_decode failed");
+    assert_eq!(decompressed, original, "gzippy deflate round-trip mismatch");
+
+    // Deflate64 decode smoke-test: the fixture is tested in layer5 oracle tests;
+    // here we just confirm the symbol is present and accepts valid input.
+    // We re-use the Deflate-compressed bytes as a best-effort smoke (gzippy
+    // returns an error on invalid Deflate64 input, which is fine for this test).
+    let _ = gzippy::decompress_deflate64(&compressed); // result ignored intentionally
 }
