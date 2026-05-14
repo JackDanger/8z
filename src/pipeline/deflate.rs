@@ -1,44 +1,44 @@
-//! Deflate coder — raw DEFLATE (no gzip/zlib header) via `flate2`.
+//! Deflate coder — raw DEFLATE (no gzip/zlib header) via `gzippy` 0.7.
 //!
 //! 7z's Deflate codec (method ID `[0x04, 0x01, 0x08]`) stores a raw DEFLATE
-//! bitstream with no wrapper headers. The `flate2` crate's
-//! `DeflateDecoder`/`DeflateEncoder` types operate on exactly this format.
+//! bitstream with no wrapper headers. The `gzippy` crate's
+//! `deflate_encode`/`deflate_decode` functions operate on exactly this format.
 //!
-//! Note: gzippy (the permanent Phase 2 backend) is not yet published to
-//! crates.io. This Phase 1 implementation uses flate2 instead. Once gzippy
-//! ships a raw-deflate public API on crates.io, swap the import.
-
-use std::io::Read;
-
-use flate2::bufread::{DeflateDecoder, DeflateEncoder};
-use flate2::Compression;
+//! Compression level 6 is used for encoding, matching gzip's default and
+//! the behaviour of the former `flate2` Phase 1 backend (`Compression::default()`).
 
 use crate::container::MethodId;
 use crate::error::{SevenZippyError, SevenZippyResult};
 use crate::pipeline::Coder;
 
-/// Raw-DEFLATE coder backed by flate2 (Phase 1).
+/// Compression level used for Deflate encode: 6 (gzip default).
+const DEFLATE_LEVEL: u8 = 6;
+
+/// Raw-DEFLATE coder backed by gzippy 0.7.
 pub struct DeflateCoder;
 
 impl Coder for DeflateCoder {
     fn decode(&self, packed: &[u8], _unpacked_size: u64) -> SevenZippyResult<Vec<u8>> {
-        let cursor = std::io::BufReader::new(packed);
-        let mut decoder = DeflateDecoder::new(cursor);
-        let mut out = Vec::new();
-        decoder
-            .read_to_end(&mut out)
-            .map_err(|e| SevenZippyError::Coder(Box::new(e)))?;
-        Ok(out)
+        #[cfg(feature = "deflate")]
+        {
+            gzippy::deflate_decode(packed).map_err(|e| SevenZippyError::Coder(Box::new(e)))
+        }
+        #[cfg(not(feature = "deflate"))]
+        {
+            Err(SevenZippyError::missing_coder("Deflate"))
+        }
     }
 
     fn encode(&self, unpacked: &[u8]) -> SevenZippyResult<Vec<u8>> {
-        let cursor = std::io::BufReader::new(unpacked);
-        let mut encoder = DeflateEncoder::new(cursor, Compression::default());
-        let mut out = Vec::new();
-        encoder
-            .read_to_end(&mut out)
-            .map_err(|e| SevenZippyError::Coder(Box::new(e)))?;
-        Ok(out)
+        #[cfg(feature = "deflate")]
+        {
+            gzippy::deflate_encode(unpacked, DEFLATE_LEVEL)
+                .map_err(|e| SevenZippyError::Coder(Box::new(e)))
+        }
+        #[cfg(not(feature = "deflate"))]
+        {
+            Err(SevenZippyError::missing_coder("Deflate"))
+        }
     }
 
     fn method_id(&self) -> MethodId {
