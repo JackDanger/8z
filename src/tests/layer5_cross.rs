@@ -470,6 +470,268 @@ fn we_read_committed_bcj_fixture() {
     assert_slices_eq!(content, expected);
 }
 
+// ── BCJ ARM oracle tests ───────────────────────────────────────────────────────
+
+/// Write a BCJ ARM archive with 7zippy, then extract it with `7zz`.
+///
+/// Fixture: 1024 bytes of cycling 0–255, which contains ARM branch-like byte
+/// patterns (0xEB / 0xEA at word-aligned offsets) that the ARM BCJ filter
+/// transforms.
+#[cfg(feature = "bcj")]
+#[test]
+fn seven_zip_reads_our_bcj_arm_archive() {
+    require_7zz!();
+
+    use crate::pipeline::bcj::{BcjArch, BcjCoder};
+    use crate::pipeline::Coder;
+    let input: Vec<u8> = (0u8..=255).cycle().take(1024).collect();
+    let coder = BcjCoder::new(BcjArch::Arm);
+    let filtered = coder.encode(&input).unwrap();
+    assert_ne!(
+        filtered, input,
+        "BCJ ARM filter must transform the fixture (sanity: filter is not a no-op)"
+    );
+
+    let mut b = ArchiveBuilder::new();
+    b.add_file(
+        "payload.bin",
+        input.clone(),
+        Box::new(BcjCoder::new(BcjArch::Arm)),
+    );
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, input);
+}
+
+/// Ask `7zz` to compress data with the BCJ ARM filter, then decompress with 7zippy.
+#[cfg(feature = "bcj")]
+#[test]
+fn bcj_arm_oracle_round_trip() {
+    require_7zz!();
+
+    let input: Vec<u8> = (0u8..=255).cycle().take(1024).collect();
+    let archive = seven_zip_compress(&input, &CoderSpec::BcjArm);
+
+    let parsed = Archive::parse(&archive).expect("7zippy must parse 7zz BCJ ARM archive");
+    assert_eq!(parsed.file_count(), 1);
+    let extracted = parsed.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+// ── BCJ ARM-Thumb oracle tests ─────────────────────────────────────────────────
+
+/// Write a BCJ ARM-Thumb archive with 7zippy, then extract it with `7zz`.
+///
+/// Fixture: 1024 bytes of cycling 0–255, which contains Thumb2 BL-like byte
+/// patterns that the ARM-Thumb BCJ filter transforms.
+#[cfg(feature = "bcj")]
+#[test]
+fn seven_zip_reads_our_bcj_arm_thumb_archive() {
+    require_7zz!();
+
+    use crate::pipeline::bcj::{BcjArch, BcjCoder};
+    use crate::pipeline::Coder;
+    let input: Vec<u8> = (0u8..=255).cycle().take(1024).collect();
+    let coder = BcjCoder::new(BcjArch::ArmThumb);
+    let filtered = coder.encode(&input).unwrap();
+    assert_ne!(
+        filtered, input,
+        "BCJ ARM-Thumb filter must transform the fixture (sanity: filter is not a no-op)"
+    );
+
+    let mut b = ArchiveBuilder::new();
+    b.add_file(
+        "payload.bin",
+        input.clone(),
+        Box::new(BcjCoder::new(BcjArch::ArmThumb)),
+    );
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, input);
+}
+
+/// Ask `7zz` to compress data with the BCJ ARM-Thumb filter, then decompress with 7zippy.
+#[cfg(feature = "bcj")]
+#[test]
+fn bcj_arm_thumb_oracle_round_trip() {
+    require_7zz!();
+
+    let input: Vec<u8> = (0u8..=255).cycle().take(1024).collect();
+    let archive = seven_zip_compress(&input, &CoderSpec::BcjArmThumb);
+
+    let parsed = Archive::parse(&archive).expect("7zippy must parse 7zz BCJ ARM-Thumb archive");
+    assert_eq!(parsed.file_count(), 1);
+    let extracted = parsed.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+// ── BCJ PPC oracle tests ───────────────────────────────────────────────────────
+
+/// Write a BCJ PPC archive with 7zippy, then extract it with `7zz`.
+///
+/// Fixture: repeated `[0x48, 0x00, 0x04, 0x01]` — a PPC BL (branch-and-link,
+/// AA=0) instruction pointing to a relative offset. The PPC BCJ filter triggers
+/// on 4-byte words where `(b0 & 0xFC) == 0x48 && (b3 & 0x03) == 0x01`. At
+/// pos > 0 the filter adds the program counter, so output differs from input.
+#[cfg(feature = "bcj")]
+#[test]
+fn seven_zip_reads_our_bcj_ppc_archive() {
+    require_7zz!();
+
+    use crate::pipeline::bcj::{BcjArch, BcjCoder};
+    use crate::pipeline::Coder;
+    // PPC BL (branch-and-link, AA=0): opcode=18, LK=1, AA=0 → last byte 0x01.
+    // At pos=4 the filter adds 4 to the src offset, changing the output bytes.
+    let input: Vec<u8> = [0x48u8, 0x00, 0x04, 0x01].repeat(256); // 1024 bytes
+    let coder = BcjCoder::new(BcjArch::PowerPc);
+    let filtered = coder.encode(&input).unwrap();
+    assert_ne!(
+        filtered, input,
+        "BCJ PPC filter must transform the fixture (sanity: filter is not a no-op)"
+    );
+
+    let mut b = ArchiveBuilder::new();
+    b.add_file(
+        "payload.bin",
+        input.clone(),
+        Box::new(BcjCoder::new(BcjArch::PowerPc)),
+    );
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, input);
+}
+
+/// Ask `7zz` to compress data with the BCJ PPC filter, then decompress with 7zippy.
+#[cfg(feature = "bcj")]
+#[test]
+fn bcj_ppc_oracle_round_trip() {
+    require_7zz!();
+
+    let input: Vec<u8> = (0u8..=255).cycle().take(1024).collect();
+    let archive = seven_zip_compress(&input, &CoderSpec::BcjPpc);
+
+    let parsed = Archive::parse(&archive).expect("7zippy must parse 7zz BCJ PPC archive");
+    assert_eq!(parsed.file_count(), 1);
+    let extracted = parsed.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+// ── BCJ IA64 oracle tests ──────────────────────────────────────────────────────
+
+/// Write a BCJ IA64 archive with 7zippy, then extract it with `7zz`.
+///
+/// Fixture: hand-crafted 16-byte IA64 bundle with template 0x10 (MFB — M, F,
+/// and B-type slots). The last slot is a branch (`op=5`, `btype=0`) with a
+/// non-zero relative target. At bundle-position > 0 the filter adds the PC,
+/// so output bytes differ from input.
+#[cfg(feature = "bcj")]
+#[test]
+fn seven_zip_reads_our_bcj_ia64_archive() {
+    require_7zz!();
+
+    use crate::pipeline::bcj::{BcjArch, BcjCoder};
+    use crate::pipeline::Coder;
+    // Bundle: template=0x10 (MFB). Slot 2 (branch) at bit_pos=87, byte_pos=10,
+    // bit_res=7. instr_norm = (5<<37)|(1<<13) = 0xA000002000 encodes a branch
+    // with 20-bit offset=1 and op=5 btype=0. The 6 bytes at [10..16] in LE are:
+    //   instr = instr_norm << 7 = 0x500000100000
+    //   bytes: 0x00, 0x00, 0x10, 0x00, 0x00, 0x50
+    // At pos > 0 the PC is added to the src offset, modifying the output.
+    let bundle: [u8; 16] = [
+        0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00,
+        0x50,
+    ];
+    let input: Vec<u8> = bundle.repeat(64); // 1024 bytes = 64 bundles
+    let coder = BcjCoder::new(BcjArch::Ia64);
+    let filtered = coder.encode(&input).unwrap();
+    assert_ne!(
+        filtered, input,
+        "BCJ IA64 filter must transform the fixture (sanity: filter is not a no-op)"
+    );
+
+    let mut b = ArchiveBuilder::new();
+    b.add_file(
+        "payload.bin",
+        input.clone(),
+        Box::new(BcjCoder::new(BcjArch::Ia64)),
+    );
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, input);
+}
+
+/// Ask `7zz` to compress data with the BCJ IA64 filter, then decompress with 7zippy.
+#[cfg(feature = "bcj")]
+#[test]
+fn bcj_ia64_oracle_round_trip() {
+    require_7zz!();
+
+    let input: Vec<u8> = (0u8..=255).cycle().take(1024).collect();
+    let archive = seven_zip_compress(&input, &CoderSpec::BcjIa64);
+
+    let parsed = Archive::parse(&archive).expect("7zippy must parse 7zz BCJ IA64 archive");
+    assert_eq!(parsed.file_count(), 1);
+    let extracted = parsed.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
+// ── BCJ SPARC oracle tests ─────────────────────────────────────────────────────
+
+/// Write a BCJ SPARC archive with 7zippy, then extract it with `7zz`.
+///
+/// Fixture: repeated `[0x40, 0x00, 0x04, 0x00]` — a SPARC CALL instruction
+/// with a small non-zero displacement. The SPARC BCJ filter triggers on 4-byte
+/// words where `b0 == 0x40 && (b1 & 0xC0) == 0x00`. At pos > 0 the filter
+/// adds the program counter to the disp30 field, changing the output bytes.
+#[cfg(feature = "bcj")]
+#[test]
+fn seven_zip_reads_our_bcj_sparc_archive() {
+    require_7zz!();
+
+    use crate::pipeline::bcj::{BcjArch, BcjCoder};
+    use crate::pipeline::Coder;
+    // SPARC CALL: op=01 (bits 31-30), disp30 = 0x000400 (non-zero displacement).
+    // [0x40, 0x00, 0x04, 0x00] satisfies b0==0x40 and (b1&0xC0)==0x00.
+    // At pos=4 the filter adds 4 to the shifted src, changing the output.
+    let input: Vec<u8> = [0x40u8, 0x00, 0x04, 0x00].repeat(256); // 1024 bytes
+    let coder = BcjCoder::new(BcjArch::Sparc);
+    let filtered = coder.encode(&input).unwrap();
+    assert_ne!(
+        filtered, input,
+        "BCJ SPARC filter must transform the fixture (sanity: filter is not a no-op)"
+    );
+
+    let mut b = ArchiveBuilder::new();
+    b.add_file(
+        "payload.bin",
+        input.clone(),
+        Box::new(BcjCoder::new(BcjArch::Sparc)),
+    );
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, input);
+}
+
+/// Ask `7zz` to compress data with the BCJ SPARC filter, then decompress with 7zippy.
+#[cfg(feature = "bcj")]
+#[test]
+fn bcj_sparc_oracle_round_trip() {
+    require_7zz!();
+
+    let input: Vec<u8> = (0u8..=255).cycle().take(1024).collect();
+    let archive = seven_zip_compress(&input, &CoderSpec::BcjSparc);
+
+    let parsed = Archive::parse(&archive).expect("7zippy must parse 7zz BCJ SPARC archive");
+    assert_eq!(parsed.file_count(), 1);
+    let extracted = parsed.reader().extract(0).unwrap();
+    assert_slices_eq!(extracted, input);
+}
+
 // ── BCJ2 cross-validation (decode-only; 4-stream via jumpzippier sub-crate) ──
 
 /// Read the committed BCJ2+LZMA fixture (generated by `7zz`) and extract it with 7zippy.
