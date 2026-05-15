@@ -47,6 +47,16 @@ pub enum CoderSpec {
     Deflate64,
     /// BCJ x86 filter. `-m0=bcj`
     Bcj,
+    /// BCJ ARM filter. `-m0=arm`
+    BcjArm,
+    /// BCJ ARM-Thumb filter. `-m0=armt`
+    BcjArmThumb,
+    /// BCJ PowerPC filter. `-m0=ppc`
+    BcjPpc,
+    /// BCJ IA64 filter. `-m0=ia64`
+    BcjIa64,
+    /// BCJ SPARC filter. `-m0=sparc`
+    BcjSparc,
     /// BCJ2 4-stream filter paired with LZMA. `-m0=BCJ2 -m1=LZMA`
     Bcj2,
     /// AES-256 encryption with optional password. `-p<password>`
@@ -77,6 +87,11 @@ impl CoderSpec {
             CoderSpec::Ppmd { .. } => "ppmd".to_string(),
             CoderSpec::Delta { distance } => format!("delta:{distance}"),
             CoderSpec::Bcj => "bcj".to_string(),
+            CoderSpec::BcjArm => "arm".to_string(),
+            CoderSpec::BcjArmThumb => "armt".to_string(),
+            CoderSpec::BcjPpc => "ppc".to_string(),
+            CoderSpec::BcjIa64 => "ia64".to_string(),
+            CoderSpec::BcjSparc => "sparc".to_string(),
             // BCJ2 is special: it uses two -m arguments (BCJ2 + LZMA).
             // m_arg() returns only the first; seven_zip_compress handles the extra arg.
             CoderSpec::Bcj2 => "BCJ2".to_string(),
@@ -97,6 +112,11 @@ impl CoderSpec {
             CoderSpec::Ppmd { level, .. } => *level,
             CoderSpec::Delta { .. } => 0,
             CoderSpec::Bcj => 0,
+            CoderSpec::BcjArm => 0,
+            CoderSpec::BcjArmThumb => 0,
+            CoderSpec::BcjPpc => 0,
+            CoderSpec::BcjIa64 => 0,
+            CoderSpec::BcjSparc => 0,
             CoderSpec::Bcj2 => 5,
             CoderSpec::Aes { .. } => 5,
         }
