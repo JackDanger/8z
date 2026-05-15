@@ -29,7 +29,11 @@ use crate::pipeline::{self, Coder, CopyCoder};
 
 struct EncodedFile {
     name: String,
-    packed: Vec<u8>,
+    /// One entry per packed stream in this folder.
+    ///
+    /// Single-stream coders (Copy, LZMA, LZMA2, AES+LZMA2) produce exactly
+    /// one element.  BCJ2+LZMA produces four elements: [lzma_main, call, jump, rc].
+    packed_streams: Vec<Vec<u8>>,
     folder: Folder,
     unpacked_crc: u32,
 }
@@ -57,6 +61,8 @@ enum BuildEntry {
         content: Vec<u8>,
         password: String,
     },
+    #[cfg(feature = "bcj2")]
+    Bcj2 { name: String, content: Vec<u8> },
 }
 
 impl ArchiveBuilder {
@@ -104,6 +110,20 @@ impl ArchiveBuilder {
         self
     }
 
+    /// Add a file with BCJ2 pre-filter and LZMA compression.
+    ///
+    /// BCJ2 splits the input into 4 packed streams (main, call, jump, rc), then
+    /// LZMA-compresses the main stream. The resulting folder has 2 coders and 4
+    /// packed streams — the multi-pack-stream case.
+    #[cfg(feature = "bcj2")]
+    pub fn add_bcj2_file(&mut self, name: impl Into<String>, content: Vec<u8>) -> &mut Self {
+        self.files.push(BuildEntry::Bcj2 {
+            name: name.into(),
+            content,
+        });
+        self
+    }
+
     /// Emit a complete `.7z` archive as a byte vector.
     ///
     /// The output is extractable by the reference `7zz` implementation.
@@ -126,7 +146,7 @@ impl ArchiveBuilder {
                     let unpacked_crc = crc32(content);
                     encoded_files.push(EncodedFile {
                         name: name.clone(),
-                        packed,
+                        packed_streams: vec![packed],
                         folder,
                         unpacked_crc,
                     });
@@ -141,7 +161,18 @@ impl ArchiveBuilder {
                     let unpacked_crc = crc32(content);
                     encoded_files.push(EncodedFile {
                         name: name.clone(),
-                        packed,
+                        packed_streams: vec![packed],
+                        folder,
+                        unpacked_crc,
+                    });
+                }
+                #[cfg(feature = "bcj2")]
+                BuildEntry::Bcj2 { name, content } => {
+                    let (packed_streams, folder) = pipeline::encode_bcj2_folder(content)?;
+                    let unpacked_crc = crc32(content);
+                    encoded_files.push(EncodedFile {
+                        name: name.clone(),
+                        packed_streams,
                         folder,
                         unpacked_crc,
                     });
@@ -150,9 +181,13 @@ impl ArchiveBuilder {
         }
 
         // ── Step 2: concatenate packed streams ────────────────────────────────
+        // Each folder may produce 1 or more packed streams (BCJ2 produces 4).
+        // We concatenate all streams from all folders in order.
         let mut packed_streams_data: Vec<u8> = Vec::new();
         for ef in &encoded_files {
-            packed_streams_data.extend_from_slice(&ef.packed);
+            for stream in &ef.packed_streams {
+                packed_streams_data.extend_from_slice(stream);
+            }
         }
         let pack_total = packed_streams_data.len();
 
@@ -265,29 +300,6 @@ fn build_header(files: &[EncodedFile]) -> SevenZippyResult<Vec<u8>> {
         return Ok(vec![0x01, 0x00]);
     }
 
-    // Validate that every folder produces exactly one packed stream.
-    //
-    // TODO(phase1-closure / BCJ2-encode): generalize for multi-packed-stream
-    // folders. Currently every supported encoder (Copy, LZMA, LZMA2, AES+LZMA2)
-    // produces exactly one packed stream per folder, so num_pack_streams ==
-    // num_files. When BCJ2 encode lands (which produces 4 packed streams per
-    // folder), this needs to become sum-of-per-folder-pack-stream-counts and
-    // PackSizes needs corresponding generalization. The validation just below
-    // (in build_header) enforces this invariant until then.
-    for ef in files {
-        let folder = &ef.folder;
-        let num_in_total: u64 = folder.coders.iter().map(|c| c.num_in_streams).sum();
-        let num_bonds = folder.bonds.len() as u64;
-        let folder_pack_streams = num_in_total - num_bonds;
-        if folder_pack_streams != 1 {
-            return Err(SevenZippyError::not_yet_implemented(
-                "multi-packed-stream folders not yet supported by the writer; \
-                 only single-packed-stream folders (e.g., Copy, LZMA, LZMA2, AES+LZMA2) \
-                 can be written",
-            ));
-        }
-    }
-
     let mut h: Vec<u8> = Vec::new();
 
     // Header (0x01)
@@ -297,17 +309,21 @@ fn build_header(files: &[EncodedFile]) -> SevenZippyResult<Vec<u8>> {
     h.push(0x04);
 
     // ── PackInfo (0x06) ───────────────────────────────────────────────────────
-    // num_pack_streams currently equals num_files because each supported encoder
-    // produces exactly one packed stream per file (enforced by the validation
-    // above). This is a documented Phase 1 limitation — see the TODO above for
-    // how this must change when BCJ2 encode lands.
+    // num_pack_streams is the total number of packed streams across all folders.
+    // Single-stream folders (Copy, LZMA, LZMA2, AES+LZMA2) contribute 1 each.
+    // BCJ2+LZMA folders contribute 4 each.
+    // PackSizes lists one size per packed stream (flat, in folder order).
+    let total_pack_streams: u64 = files.iter().map(|ef| ef.packed_streams.len() as u64).sum();
+
     h.push(0x06);
     write_uint64(&mut h, 0); // pack_pos = 0
-    write_uint64(&mut h, num_files as u64); // num_pack_streams (== num_files; Phase 1 invariant)
-                                            // Size (0x09)
+    write_uint64(&mut h, total_pack_streams); // total packed stream count
+                                              // Size (0x09): one UINT64 per packed stream, in folder-then-stream order.
     h.push(0x09);
     for ef in files {
-        write_uint64(&mut h, ef.packed.len() as u64);
+        for stream in &ef.packed_streams {
+            write_uint64(&mut h, stream.len() as u64);
+        }
     }
     h.push(0x00); // End (PackInfo)
 
@@ -479,6 +495,22 @@ mod tests {
     use super::*;
     use crate::read::Archive;
 
+    /// Build a BCJ2 archive and verify our own parser can read it back.
+    #[cfg(feature = "bcj2")]
+    #[test]
+    fn bcj2_archive_self_round_trip() {
+        let payload: Vec<u8> = (0u8..=255).cycle().take(4096).collect();
+        let mut b = ArchiveBuilder::new();
+        b.add_bcj2_file("test.bin", payload.clone());
+        let archive_bytes = b.build().unwrap();
+
+        let archive =
+            Archive::parse(&archive_bytes).expect("our own parser must accept BCJ2 archive");
+        assert_eq!(archive.file_count(), 1);
+        let extracted = archive.reader().extract(0).unwrap();
+        assert_eq!(extracted, payload, "BCJ2 self-round-trip failed");
+    }
+
     #[test]
     fn write_uint64_small() {
         let mut out = Vec::new();
@@ -556,20 +588,17 @@ mod tests {
     }
 
     /// Verify that a folder with multiple packed streams (e.g. BCJ2-style with
-    /// 4 input streams) is rejected with a `NotYetImplemented` error, not silently
-    /// written as a corrupt archive.
+    /// 4 packed streams) is accepted by the writer and produces a parseable header.
     #[test]
-    fn multi_pack_stream_folder_is_rejected() {
+    fn multi_pack_stream_folder_is_accepted() {
         use crate::container::{Coder, Folder, MethodId};
-        use crate::error::SevenZippyError;
 
-        // Construct a synthetic 2-coder folder that has 2 packed (unbound) input
-        // streams — mimicking the BCJ2 topology (4 in-streams, 3 bonds in the
-        // real case; here we use 2 in-streams, 1 bond = 1 remaining pack stream is
-        // OK, so let's use 2 in-streams, 0 bonds = 2 pack streams which is invalid).
+        // Construct a synthetic 2-packed-stream folder:
+        //   coder_a: num_in=2, num_out=1, no bonds → 2 packed streams
+        // The header writer must serialize this without error.
         let coder_a = Coder {
             method_id: MethodId(vec![0x00]), // Copy
-            num_in_streams: 2,               // two unbound input streams
+            num_in_streams: 2,
             num_out_streams: 1,
             properties: vec![],
         };
@@ -581,23 +610,78 @@ mod tests {
             unpack_crc: None,
         };
 
+        // Provide two packed stream byte vectors.
         let files = vec![EncodedFile {
             name: "test.bin".to_string(),
-            packed: b"hello".to_vec(),
+            packed_streams: vec![b"hel".to_vec(), b"lo".to_vec()],
             folder,
             unpacked_crc: 0,
         }];
 
         let result = build_header(&files);
-        match result {
-            Err(SevenZippyError::NotYetImplemented(msg)) => {
-                assert!(
-                    msg.contains("multi-packed-stream"),
-                    "error message should mention multi-packed-stream, got: {msg}"
-                );
-            }
-            other => panic!("expected NotYetImplemented, got: {other:?}"),
-        }
+        assert!(
+            result.is_ok(),
+            "multi-pack-stream folder should be accepted: {result:?}"
+        );
+        let header = result.unwrap();
+        // Header must start with 0x01 (Header tag).
+        assert_eq!(header[0], 0x01);
+    }
+
+    /// Verify that a folder with 4 packed streams produces correct PackInfo counts.
+    #[test]
+    fn four_pack_stream_folder_pack_count() {
+        use crate::container::{Bond, Coder, Folder, MethodId};
+
+        // BCJ2+LZMA topology: 2 coders, 1 bond, 4 packed streams.
+        let lzma_coder = Coder {
+            method_id: MethodId(vec![0x03, 0x01, 0x01]),
+            num_in_streams: 1,
+            num_out_streams: 1,
+            properties: vec![0x5D, 0x00, 0x00, 0x10, 0x00],
+        };
+        let bcj2_coder = Coder {
+            method_id: MethodId(vec![0x03, 0x03, 0x01, 0x1B]),
+            num_in_streams: 4,
+            num_out_streams: 1,
+            properties: vec![],
+        };
+        let folder = Folder {
+            coders: vec![lzma_coder, bcj2_coder],
+            bonds: vec![Bond {
+                in_index: 1,
+                out_index: 0,
+            }],
+            packed_stream_indices: vec![0, 2, 3, 4],
+            unpack_sizes: vec![100, 200],
+            unpack_crc: None,
+        };
+
+        let files = vec![EncodedFile {
+            name: "x86.bin".to_string(),
+            packed_streams: vec![
+                vec![0u8; 80], // LZMA-compressed main stream
+                vec![0u8; 10], // call stream
+                vec![0u8; 8],  // jump stream
+                vec![0u8; 12], // rc stream
+            ],
+            folder,
+            unpacked_crc: 0,
+        }];
+
+        let header = build_header(&files).expect("should build header without error");
+        // Parse to find the PackInfo section and verify total_pack_streams = 4.
+        // The PackInfo (tag 0x06) starts at offset 2 (after 0x01 Header, 0x04 MainStreams).
+        // After 0x06: pack_pos (UINT64), num_pack_streams (UINT64).
+        // We just assert the header built without error and is non-empty.
+        assert!(!header.is_empty());
+        // The PackInfo num_pack_streams = 4 is encoded at bytes [3] (after tags 01 04 06).
+        // In UINT64 encoding: 4 < 128 → 1 byte = 0x04.
+        // Byte layout: [0]=0x01, [1]=0x04, [2]=0x06, [3]=0x00 (pack_pos=0), [4]=0x04 (num_packs=4)
+        assert_eq!(
+            header[4], 0x04,
+            "num_pack_streams should be 4 (encoded as 0x04)"
+        );
     }
 
     /// Verify that a coder with an empty method ID is rejected.
@@ -622,7 +706,7 @@ mod tests {
 
         let files = vec![EncodedFile {
             name: "test.bin".to_string(),
-            packed: b"hello".to_vec(),
+            packed_streams: vec![b"hello".to_vec()],
             folder,
             unpacked_crc: 0,
         }];
@@ -661,7 +745,7 @@ mod tests {
 
         let files = vec![EncodedFile {
             name: "test.bin".to_string(),
-            packed: b"hello".to_vec(),
+            packed_streams: vec![b"hello".to_vec()],
             folder,
             unpacked_crc: 0,
         }];

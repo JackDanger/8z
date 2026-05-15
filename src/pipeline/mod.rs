@@ -185,6 +185,87 @@ pub fn encode_aes_lzma2_folder(
     Ok((result.ciphertext, folder))
 }
 
+/// Encode plaintext into a BCJ2+LZMA two-coder folder (4 packed streams).
+///
+/// Pipeline (encoder side, outermost → innermost):
+/// 1. BCJ2 splits the input into 4 sub-streams: `[main, call, jump, rc]`.
+/// 2. LZMA compresses the `main` sub-stream.
+///
+/// The returned `packed_streams` vector has 4 elements in archive order:
+///   - `[0]`: LZMA-compressed main stream
+///   - `[1]`: CALL offset stream (raw)
+///   - `[2]`: JMP offset stream (raw)
+///   - `[3]`: range-coder stream (raw)
+///
+/// The returned `Folder` has:
+/// - 2 coders: `LZMA` (index 0) then `BCJ2` (index 1, `num_in=4`).
+/// - 1 bond: `Bond { in_index: 1, out_index: 0 }` — LZMA output feeds BCJ2 main input.
+/// - `packed_stream_indices`: `[0, 1, 2, 3]` (all 4 are packed).
+/// - `unpack_sizes`: `[lzma_main_size, plaintext_size]`.
+///
+/// This topology matches the folder structure produced by `7zz` for BCJ2-filtered archives.
+#[cfg(feature = "bcj2")]
+pub fn encode_bcj2_folder(plaintext: &[u8]) -> SevenZippyResult<(Vec<Vec<u8>>, Folder)> {
+    use crate::container::Bond;
+
+    // Step 1: BCJ2 split.
+    let [main_raw, call, jump, rc] = jumpzippier::encode::encode_4streams(plaintext);
+
+    // Step 2: LZMA-compress the main stream.
+    const DICT_SIZE: u32 = 1 << 20; // 1 MiB — fast in tests
+    let (lzma_props, lzma_main) = lazippy::encode::encode_7z(&main_raw, DICT_SIZE)
+        .map_err(|e| SevenZippyError::Coder(Box::new(e)))?;
+
+    let main_raw_size = main_raw.len() as u64;
+    let plaintext_size = plaintext.len() as u64;
+
+    // The 4 packed streams, in 7z archive order:
+    //   packed[0] = LZMA-compressed main
+    //   packed[1] = CALL offsets (raw)
+    //   packed[2] = JMP offsets  (raw)
+    //   packed[3] = range-coder  (raw)
+    let packed_streams = vec![lzma_main, call, jump, rc];
+
+    let folder = Folder {
+        coders: vec![
+            // Coder 0: LZMA (reads packed[0], outputs raw main stream)
+            CoderMeta {
+                method_id: MethodId::lzma(),
+                num_in_streams: 1,
+                num_out_streams: 1,
+                properties: lzma_props,
+            },
+            // Coder 1: BCJ2 (4 inputs → 1 output: decoded x86 bytes)
+            CoderMeta {
+                method_id: MethodId::bcj2(),
+                num_in_streams: 4,
+                num_out_streams: 1,
+                properties: vec![],
+            },
+        ],
+        bonds: vec![Bond {
+            // LZMA output (stream 0) feeds BCJ2 input slot 1 (the main slot).
+            in_index: 1,
+            out_index: 0,
+        }],
+        // BCJ2 folder packed-stream indices (global in-stream indices of the
+        // unbound inputs, in the order they map to packed streams):
+        //   PSI[0]=0: LZMA input at global in-stream 0 → packed stream 0 (LZMA main)
+        //   PSI[1]=2: BCJ2 CALL input at global in-stream 2 → packed stream 1 (CALL)
+        //   PSI[2]=3: BCJ2 JUMP input at global in-stream 3 → packed stream 2 (JUMP)
+        //   PSI[3]=4: BCJ2 RC   input at global in-stream 4 → packed stream 3 (RC)
+        // Global in-stream 1 (BCJ2 slot 0 = MAIN) is bonded and not listed.
+        // The PSI values 0,2,3,4 are global in-stream indices; pack stream i is
+        // fed into BCJ2 at global in-stream PSI[i]. The 7z decoder uses these
+        // values to route packed streams to coder inputs; 7zz always writes [0,2,3,4].
+        packed_stream_indices: vec![0, 2, 3, 4],
+        unpack_sizes: vec![main_raw_size, plaintext_size],
+        unpack_crc: Some(crc32(plaintext)),
+    };
+
+    Ok((packed_streams, folder))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
