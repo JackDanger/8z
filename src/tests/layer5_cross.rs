@@ -919,3 +919,58 @@ fn we_read_committed_ppmd_fixture() {
     let expected: Vec<u8> = (0u8..=255).cycle().take(1024).collect();
     assert_slices_eq!(content, expected);
 }
+
+// ── BCJ2 encode oracle (Phase 1 closure) ─────────────────────────────────────
+
+/// Write a BCJ2+LZMA archive with 7zippy, then extract it with `7zz`.
+///
+/// This is the headline Phase 1 closure test. It uses a cycling 0..=255
+/// fixture that statistically contains `E8` (CALL), `E9` (JMP), and `0F 8x`
+/// (Jcc) opcodes, exercising all three BCJ2 branch streams.
+///
+/// The archive is built with `ArchiveBuilder::add_bcj2_file`, which routes
+/// through `encode_bcj2_folder` → `jumpzippier::encode::encode_4streams` +
+/// LZMA. The resulting 4-packed-stream folder must be parseable by `7zz`.
+#[cfg(feature = "bcj2")]
+#[test]
+fn seven_zip_reads_our_bcj2_archive() {
+    require_7zz!();
+
+    // Use a cycling 0..=255 fixture (4 KiB). This fixture contains:
+    //   - 0xE8 bytes (CALL opcode candidates)
+    //   - 0xE9 bytes (JMP opcode candidates)
+    //   - 0x0F bytes followed by 0x80-0x8F (Jcc candidates)
+    // providing good coverage of all 4 BCJ2 branch streams.
+    let payload: Vec<u8> = (0u8..=255).cycle().take(4096).collect();
+
+    let mut b = ArchiveBuilder::new();
+    b.add_bcj2_file("test.bin", payload.clone());
+    let archive_bytes = b.build().unwrap();
+
+    // seven_zip_decompress writes the archive to a tempdir and runs `7zz x`.
+    // STOP-AND-REPORT: if 7zz rejects the archive (panics here), the
+    // multi-pack-stream container fields are wrong.
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, payload);
+}
+
+/// Reverse direction: ask `7zz` to compress data with BCJ2+LZMA, then read
+/// the resulting archive with 7zippy.
+///
+/// This test already exists as `we_read_seven_zips_bcj2_archive` (decode-only
+/// path), but we re-assert it here to confirm nothing regressed.
+#[cfg(feature = "bcj2")]
+#[test]
+fn seven_zip_reads_our_bcj2_archive_larger_payload() {
+    require_7zz!();
+
+    // 16 KiB cycling fixture — more E8/E9/0F patterns than the 4 KiB version.
+    let payload: Vec<u8> = (0u8..=255).cycle().take(16384).collect();
+
+    let mut b = ArchiveBuilder::new();
+    b.add_bcj2_file("large.bin", payload.clone());
+    let archive_bytes = b.build().unwrap();
+
+    let extracted = seven_zip_decompress(&archive_bytes);
+    assert_slices_eq!(extracted, payload);
+}

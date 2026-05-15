@@ -1,6 +1,6 @@
 # 7zippy STATUS
 
-**Current focus:** Phase 1 closure — all BCJ-variant oracle rows now ✅ (this PR). Last remaining: BCJ2 encode (jumpzippier sub-crate). Phase 2 native rewrites begin after that.
+**Current focus:** Phase 1 closure COMPLETE. Every codec row has Decode=✅, Encode=✅, Oracle=✅. Phase 2 native rewrites begin: lazippy (LZMA range coder) is the first target — see `memory/7zippy-wrappers-then-native.md`.
 
 **Phase 1 exit criterion** (user-set, 2026-05-13): every codec row reaches **Decode=✅, Encode=✅, Oracle=✅**. Streaming, Bench, and Fuzz columns are not part of the Phase 1 gate.
 
@@ -20,7 +20,7 @@
 | BCJ (PPC) | jumpzippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | BCJ (IA64) | jumpzippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | BCJ (SPARC) | jumpzippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
-| BCJ2 | jumpzippier | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ |
+| BCJ2 | jumpzippier 0.0.2 | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | Delta | deltazippy | ✅ | ✅ | ✅ | ✅ | ⬜ | ⬜ |
 | AES + SHA-256 | lockzippy 0.0.2 | ✅ | ✅ | n/a | ✅ | ⬜ | ⬜ |
 

@@ -37,7 +37,7 @@ lazippier   = { version = "0.0.1", path = "../lazippier",   optional = true }
 # (compress_deflate64). Both the deflate and deflate64 features activate this
 # single crate; Cargo deduplicates the dependency.
 gzippy      = { version = "0.8",                            optional = true }
-jumpzippier = { version = "0.0.1", path = "../jumpzippier", optional = true }
+jumpzippier = { version = "0.0.2", path = "../jumpzippier", optional = true }
 deltazippy  = { version = "0.0.1", path = "../deltazippy",  optional = true }
 lockzippy   = { version = "0.0.2", path = "../lockzippy",   optional = true }
 
