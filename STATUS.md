@@ -1,6 +1,6 @@
 # 7zippy STATUS
 
-**Current focus:** Phase 1 closure — Deflate + Deflate64 swapped to gzippy 0.7 (this PR). Remaining: Deflate64 encode (no Rust encoder exists; Opus to surface decision), BCJ2 encode (jumpzippier), BCJ-variant oracle rows (ARM/Thumb/PPC/IA64/SPARC). Then Phase 2 native rewrites begin.
+**Current focus:** Phase 1 closure — Deflate64 encode landed via gzippy 0.8 (this PR closes the Deflate64 row). Remaining: BCJ-variant oracle rows (ARM/Thumb/PPC/IA64/SPARC), BCJ2 encode (jumpzippier). Then Phase 2 native rewrites begin.
 
 **Phase 1 exit criterion** (user-set, 2026-05-13): every codec row reaches **Decode=✅, Encode=✅, Oracle=✅**. Streaming, Bench, and Fuzz columns are not part of the Phase 1 gate.
 
@@ -12,8 +12,8 @@
 | LZMA2 | lazippier | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | PPMd | pippyzippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | BZip2 | bzippy2 | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
-| Deflate | gzippy 0.7 | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
-| Deflate64 | gzippy 0.7 | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ |
+| Deflate | gzippy 0.8 | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
+| Deflate64 | gzippy 0.8 | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | BCJ (x86) | jumpzippy | ✅ | ✅ | ⬜ | ✅ | ⬜ | ⬜ |
 | BCJ (ARM) | jumpzippy | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
 | BCJ (ARM-Thumb) | jumpzippy | ✅ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ |
